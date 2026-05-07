@@ -14,6 +14,7 @@ class PropostaController extends Controller
 {
     public function index()
     {
+        // Dados necessários para a listagem e para os formulários de criação/edição.
         return Inertia::render('Propostas/Index', [
             'propostas' => Proposta::with('entidade')
                 ->orderByDesc('id')
@@ -27,14 +28,14 @@ class PropostaController extends Controller
                     'valor_total' => $p->valor_total,
                     'estado'      => $p->estado,
                 ]),
-            'clientes' => Entidade::where('is_cliente', true)
+            'clientes' => Entidade::query()->where('is_cliente', '=', true)
                 ->where('ativo', true)
                 ->orderBy('nome')
                 ->get(['id', 'nome']),
-            'artigos' => Artigo::where('ativo', true)
+            'artigos' => Artigo::query()->where('ativo', '=', true)
                 ->orderBy('nome')
                 ->get(['id', 'referencia', 'nome', 'preco', 'iva_id']),
-            'fornecedores' => Entidade::where('is_fornecedor', true)
+            'fornecedores' => Entidade::query()->where('is_fornecedor', '=', true)
                 ->where('ativo', true)
                 ->orderBy('nome')
                 ->get(['id', 'nome']),
@@ -44,6 +45,7 @@ class PropostaController extends Controller
 
     public function store(Request $request)
     {
+        // Cria a proposta e as respetivas linhas numa única operação.
         $validated = $request->validate([
             'entidade_id' => ['required', 'exists:entidades,id'],
             'validade'    => ['nullable', 'date'],
@@ -89,6 +91,7 @@ class PropostaController extends Controller
 
     public function update(Request $request, Proposta $proposta)
     {
+        // Atualiza o cabeçalho e recria as linhas para manter os totais consistentes.
         $validated = $request->validate([
             'entidade_id' => ['required', 'exists:entidades,id'],
             'validade'    => ['nullable', 'date'],
@@ -140,6 +143,7 @@ class PropostaController extends Controller
 
     public function pdf(Proposta $proposta)
     {
+        // Gera o documento em PDF com os dados já carregados.
         $proposta->load(['entidade', 'linhas.artigo']);
         $empresa = Empresa::first();
 
@@ -155,6 +159,7 @@ class PropostaController extends Controller
     {
         abort_unless($proposta->estado === 'fechado', 422, 'Só é possível converter propostas fechadas.');
 
+        // A conversão reaproveita as linhas da proposta para criar a encomenda.
         $encomenda = \App\Models\Encomenda::create([
             'numero'      => \App\Models\Encomenda::proximoNumero(),
             'entidade_id' => $proposta->entidade_id,

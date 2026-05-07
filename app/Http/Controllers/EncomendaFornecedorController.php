@@ -13,6 +13,7 @@ class EncomendaFornecedorController extends Controller
 {
     public function index()
     {
+        // Vista de gestão das encomendas dirigidas a fornecedores.
         return Inertia::render('Encomendas/Fornecedores', [
             'encomendas' => EncomendaFornecedor::with('fornecedor')
                 ->orderByDesc('id')
@@ -27,11 +28,11 @@ class EncomendaFornecedorController extends Controller
                     'estado'      => $e->estado,
                     'encomenda_id' => $e->encomenda_id,
                 ]),
-            'fornecedores' => Entidade::where('is_fornecedor', true)
+            'fornecedores' => Entidade::query()->where('is_fornecedor', '=', true)
                 ->where('ativo', true)
                 ->orderBy('nome')
                 ->get(['id', 'nome']),
-            'artigos' => Artigo::where('ativo', true)
+            'artigos' => Artigo::query()->where('ativo', '=', true)
                 ->orderBy('nome')
                 ->get(['id', 'referencia', 'nome', 'preco']),
             'proximoNumero' => EncomendaFornecedor::proximoNumero(),
@@ -40,6 +41,7 @@ class EncomendaFornecedorController extends Controller
 
     public function store(Request $request)
     {
+        // Cria uma encomenda de fornecedor com as respetivas linhas.
         $validated = $request->validate([
             'fornecedor_id' => ['required', 'exists:entidades,id'],
             'estado'        => ['required', 'in:rascunho,fechado'],
@@ -78,6 +80,7 @@ class EncomendaFornecedorController extends Controller
 
     public function update(Request $request, EncomendaFornecedor $encomendaFornecedor)
     {
+        // Recria as linhas para evitar inconsistências nos totais.
         $validated = $request->validate([
             'fornecedor_id' => ['required', 'exists:entidades,id'],
             'estado'        => ['required', 'in:rascunho,fechado'],
@@ -122,6 +125,7 @@ class EncomendaFornecedorController extends Controller
 
     public function pdf(EncomendaFornecedor $encomendaFornecedor)
     {
+        // Exporta o documento final em PDF.
         $encomendaFornecedor->load(['fornecedor', 'linhas.artigo']);
         $empresa = Empresa::first();
 

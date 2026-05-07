@@ -12,6 +12,7 @@ class ArtigoController extends Controller
 {
     public function index()
     {
+        // Lista os artigos com IVA e caminho de imagem já resolvidos para a interface.
         return Inertia::render('Configuracoes/Artigos', [
             'artigos' => Artigo::with('iva')->orderBy('nome')->get()->map(fn($a) => [
                 'id'         => $a->id,
@@ -26,12 +27,13 @@ class ArtigoController extends Controller
                 'observacoes' => $a->observacoes,
                 'ativo'      => $a->ativo,
             ]),
-            'taxas_iva' => Iva::where('ativo', true)->orderBy('percentagem')->get(['id', 'nome', 'percentagem']),
+            'taxas_iva' => Iva::query()->where('ativo', '=', true)->orderBy('percentagem')->get(['id', 'nome', 'percentagem']),
         ]);
     }
 
     public function store(Request $request)
     {
+        // Guarda o artigo e, se existir, anexa a fotografia no disco privado.
         $validated = $request->validate([
             'referencia'  => ['required', 'string', 'max:100', 'unique:artigos,referencia'],
             'nome'        => ['required', 'string', 'max:255'],
@@ -44,7 +46,7 @@ class ArtigoController extends Controller
         ]);
 
         if ($request->hasFile('foto')) {
-            $validated['foto'] = $request->file('foto')->store('artigos', 'private');
+            $validated['foto'] = $request->file('foto')->store('artigos');
         }
 
         Artigo::create($validated);
@@ -53,6 +55,7 @@ class ArtigoController extends Controller
 
     public function update(Request $request, Artigo $artigo)
     {
+        // Atualiza os dados do artigo e substitui a fotografia anterior quando necessário.
         $validated = $request->validate([
             'referencia'  => ['required', 'string', 'max:100', 'unique:artigos,referencia,' . $artigo->id],
             'nome'        => ['required', 'string', 'max:255'],
@@ -65,8 +68,9 @@ class ArtigoController extends Controller
         ]);
 
         if ($request->hasFile('foto')) {
-            if ($artigo->foto) Storage::disk('private')->delete($artigo->foto);
-            $validated['foto'] = $request->file('foto')->store('artigos', 'private');
+            $disk = Storage::disk('local');
+            if ($artigo->foto) $disk->delete($artigo->foto);
+            $validated['foto'] = $request->file('foto')->store('artigos');
         }
 
         $artigo->update($validated);
@@ -75,14 +79,17 @@ class ArtigoController extends Controller
 
     public function destroy(Artigo $artigo)
     {
-        if ($artigo->foto) Storage::disk('private')->delete($artigo->foto);
+        // Remove o ficheiro associado antes de eliminar o registo.
+        $disk = Storage::disk('local');
+        if ($artigo->foto) $disk->delete($artigo->foto);
         $artigo->delete();
         return back();
     }
 
     public function foto(Artigo $artigo)
     {
-        abort_unless($artigo->foto, 404);
+        // Serve a imagem guardada para visualização no frontend.
+        abort_unless((bool) $artigo->foto, 404);
         return response()->file(storage_path('app/private/' . $artigo->foto));
     }
 }

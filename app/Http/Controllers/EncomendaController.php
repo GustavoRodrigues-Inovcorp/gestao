@@ -14,6 +14,7 @@ class EncomendaController extends Controller
 {
     public function index()
     {
+        // Lista de encomendas e dados auxiliares para os modais de criação/edição.
         return Inertia::render('Encomendas/Clientes', [
             'encomendas' => Encomenda::with('entidade')
                 ->orderByDesc('id')
@@ -30,14 +31,14 @@ class EncomendaController extends Controller
                     'estado'      => $e->estado,
                     'proposta_id' => $e->proposta_id,
                 ]),
-            'clientes' => Entidade::where('is_cliente', true)
+            'clientes' => Entidade::query()->where('is_cliente', '=', true)
                 ->where('ativo', true)
                 ->orderBy('nome')
                 ->get(['id', 'nome']),
-            'artigos' => Artigo::where('ativo', true)
+            'artigos' => Artigo::query()->where('ativo', '=', true)
                 ->orderBy('nome')
                 ->get(['id', 'referencia', 'nome', 'preco', 'iva_id']),
-            'fornecedores' => Entidade::where('is_fornecedor', true)
+            'fornecedores' => Entidade::query()->where('is_fornecedor', '=', true)
                 ->where('ativo', true)
                 ->orderBy('nome')
                 ->get(['id', 'nome']),
@@ -47,6 +48,7 @@ class EncomendaController extends Controller
 
     public function store(Request $request)
     {
+        // Cria a encomenda e todas as linhas em cascata.
         $validated = $request->validate([
             'entidade_id' => ['required', 'exists:entidades,id'],
             'validade'    => ['nullable', 'date'],
@@ -91,6 +93,7 @@ class EncomendaController extends Controller
 
     public function update(Request $request, Encomenda $encomenda)
     {
+        // Atualiza o documento substituindo as linhas para manter o cálculo simples.
         $validated = $request->validate([
             'entidade_id' => ['required', 'exists:entidades,id'],
             'validade'    => ['nullable', 'date'],
@@ -141,6 +144,7 @@ class EncomendaController extends Controller
 
     public function pdf(Encomenda $encomenda)
     {
+        // Renderização do PDF da encomenda com os relacionamentos já carregados.
         $encomenda->load(['entidade', 'linhas.artigo']);
         $empresa = Empresa::first();
 
@@ -158,7 +162,7 @@ class EncomendaController extends Controller
 
         $encomenda->load('linhas');
 
-        // Agrupa linhas por fornecedor
+        // Agrupa as linhas pelo fornecedor para gerar documentos separados.
         $porFornecedor = $encomenda->linhas
             ->filter(fn($l) => $l->fornecedor_id)
             ->groupBy('fornecedor_id');
