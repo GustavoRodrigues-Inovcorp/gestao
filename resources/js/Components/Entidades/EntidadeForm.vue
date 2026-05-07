@@ -1,12 +1,14 @@
 <script setup>
-import { watch } from 'vue'
+import { ref, watch } from 'vue'
 import { Input } from '@/Components/ui/input'
 import { Label } from '@/Components/ui/label'
+import { Button } from '@/Components/ui/button'
 import {
     Select, SelectContent, SelectItem,
     SelectTrigger, SelectValue,
 } from '@/Components/ui/select'
 import { Textarea } from '@/Components/ui/textarea'
+import { Search, Loader2 } from 'lucide-vue-next'
 
 const props = defineProps({
     form: Object,
@@ -15,7 +17,10 @@ const props = defineProps({
     isFornecedor: Boolean,
 })
 
-// Formata código postal automaticamente
+const viesLoading = ref(false)
+const viesError = ref('')
+const viesSuccess = ref('')
+
 watch(() => props.form.codigo_postal, (val) => {
     if (!val) return
     const digits = val.replace(/\D/g, '')
@@ -36,6 +41,44 @@ async function checkNif() {
         props.form.clearErrors('nif')
     }
 }
+
+async function lookupVies() {
+    if (!props.form.nif || props.form.nif.length < 9) {
+        viesError.value = 'Introduz um NIF válido primeiro.'
+        return
+    }
+
+    viesError.value = ''
+    viesSuccess.value = ''
+    viesLoading.value = true
+
+    try {
+        // Extrai código do país (primeiras 2 letras se existirem, senão usa PT)
+        const nif = props.form.nif.trim()
+        const countryMatch = nif.match(/^([A-Za-z]{2})/)
+        const countryCode = countryMatch ? countryMatch[1].toUpperCase() : 'PT'
+        const vatNumber = nif.replace(/^[A-Za-z]{2}/, '')
+
+        const params = new URLSearchParams({ country_code: countryCode, vat_number: vatNumber })
+        const res = await fetch(`/vies/lookup?${params}`)
+        const data = await res.json()
+
+        if (data.error) {
+            viesError.value = data.error
+            return
+        }
+
+        if (data.nome) props.form.nome = data.nome
+        if (data.morada) props.form.morada = data.morada
+        if (data.localidade) props.form.localidade = data.localidade
+
+        viesSuccess.value = 'Dados preenchidos automaticamente.'
+    } catch (e) {
+        viesError.value = 'Erro ao consultar o VIES.'
+    } finally {
+        viesLoading.value = false
+    }
+}
 </script>
 
 <template>
@@ -52,11 +95,20 @@ async function checkNif() {
             </div>
         </div>
 
-        <!-- NIF -->
+        <!-- NIF + VIES -->
         <div class="space-y-1">
             <Label>NIF</Label>
-            <Input v-model="form.nif" @blur="checkNif" />
+            <div class="flex gap-2">
+                <Input v-model="form.nif" @blur="checkNif" class="flex-1" placeholder="ex: PT501234567" />
+                <Button type="button" variant="outline" size="sm" @click="lookupVies" :disabled="viesLoading" class="gap-2 shrink-0">
+                    <Loader2 v-if="viesLoading" class="w-4 h-4 animate-spin" />
+                    <Search v-else class="w-4 h-4" />
+                    VIES
+                </Button>
+            </div>
             <p v-if="form.errors.nif" class="text-xs text-destructive">{{ form.errors.nif }}</p>
+            <p v-if="viesError" class="text-xs text-destructive">{{ viesError }}</p>
+            <p v-if="viesSuccess" class="text-xs text-green-600">{{ viesSuccess }}</p>
         </div>
 
         <!-- Nome -->
@@ -150,9 +202,7 @@ async function checkNif() {
         <div class="space-y-1">
             <Label>Estado</Label>
             <Select v-model="form.ativo">
-                <SelectTrigger>
-                    <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                     <SelectItem :value="true">Ativo</SelectItem>
                     <SelectItem :value="false">Inativo</SelectItem>
