@@ -5,6 +5,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Artigo extends Model
 {
+    // Tabela de artigos usada nas propostas e encomendas.
     protected $table = 'artigos';
 
     protected $fillable = [
@@ -20,6 +21,7 @@ class Artigo extends Model
 
     public function iva()
     {
+        // Relação com a taxa de IVA associada ao artigo.
         return $this->belongsTo(Iva::class);
     }
 }

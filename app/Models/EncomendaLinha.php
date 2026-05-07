@@ -5,6 +5,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class EncomendaLinha extends Model
 {
+    // Linha de venda associada a uma encomenda.
     protected $table = 'encomenda_linhas';
 
     protected $fillable = [
@@ -22,11 +23,13 @@ class EncomendaLinha extends Model
 
     public function artigo()
     {
+        // Artigo opcional associado à linha.
         return $this->belongsTo(Artigo::class);
     }
 
     public function fornecedor()
     {
+        // Fornecedor opcional usado na conversão para compras.
         return $this->belongsTo(Entidade::class, 'fornecedor_id');
     }
 }

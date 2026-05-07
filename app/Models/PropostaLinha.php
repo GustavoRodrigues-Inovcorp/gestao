@@ -5,6 +5,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class PropostaLinha extends Model
 {
+    // Linha detalhada da proposta comercial.
     protected $table = 'proposta_linhas';
 
     protected $fillable = [
@@ -22,11 +23,13 @@ class PropostaLinha extends Model
 
     public function artigo()
     {
+        // Artigo de catálogo associado à linha.
         return $this->belongsTo(Artigo::class);
     }
 
     public function fornecedor()
     {
+        // Fornecedor opcional para articulação com compras.
         return $this->belongsTo(Entidade::class, 'fornecedor_id');
     }
 }

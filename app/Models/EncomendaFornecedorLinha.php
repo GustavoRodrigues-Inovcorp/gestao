@@ -5,6 +5,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class EncomendaFornecedorLinha extends Model
 {
+    // Linha de custo da encomenda ao fornecedor.
     protected $table = 'encomenda_fornecedor_linhas';
 
     protected $fillable = [
@@ -21,6 +22,7 @@ class EncomendaFornecedorLinha extends Model
 
     public function artigo()
     {
+        // Artigo de origem da linha, quando existe.
         return $this->belongsTo(Artigo::class);
     }
 }
