@@ -36,6 +36,7 @@
 </head>
 <body>
 <div class="page">
+    <!-- Cabeçalho com os dados da empresa e do fornecedor. -->
     <div class="header">
         <div class="logo-area">
             <h1>{{ $empresa?->nome ?? 'Empresa' }}</h1>
@@ -49,6 +50,7 @@
         </div>
     </div>
 
+    <!-- Origem e destino do documento. -->
     <div class="parties">
         <div class="party">
             <div class="party-label">De</div>
@@ -69,6 +71,7 @@
         </div>
     </div>
 
+    <!-- Apenas a data é relevante neste documento. -->
     <div class="dates">
         <div>
             <div class="date-label">Data</div>
@@ -76,6 +79,7 @@
         </div>
     </div>
 
+    <!-- Linhas de custo enviadas ao fornecedor. -->
     <table>
         <thead>
             <tr>
@@ -102,6 +106,7 @@
     </table>
 
     @php
+        // Totais usados para fechar o documento.
         $subtotal = $encomenda->linhas->sum('subtotal');
         $totalIva = $encomenda->linhas->sum(fn($l) => $l->subtotal * $l->iva / 100);
         $total = $subtotal + $totalIva;

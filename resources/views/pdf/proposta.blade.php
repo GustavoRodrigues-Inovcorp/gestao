@@ -55,7 +55,7 @@
 <body>
 <div class="page">
 
-    <!-- Header -->
+    <!-- Cabeçalho com a identificação da empresa e da proposta. -->
     <div class="header">
         <div class="logo-area">
             <h1>{{ $empresa?->nome ?? 'Empresa' }}</h1>
@@ -74,7 +74,7 @@
         </div>
     </div>
 
-    <!-- Empresa + Cliente -->
+    <!-- Bloco com remetente e destinatário. -->
     <div class="parties">
         <div class="party">
             <div class="party-label">De</div>
@@ -96,7 +96,7 @@
         </div>
     </div>
 
-    <!-- Datas -->
+    <!-- Datas principais do documento. -->
     <div class="dates">
         <div class="date-item">
             <div class="date-label">Data</div>
@@ -108,7 +108,7 @@
         </div>
     </div>
 
-    <!-- Linhas -->
+    <!-- Linhas da proposta com preço e IVA. -->
     <table>
         <thead>
             <tr>
@@ -134,7 +134,7 @@
         </tbody>
     </table>
 
-    <!-- Totais -->
+    <!-- Totais agregados apresentados no fecho. -->
     @php
         $subtotalSemIva = $proposta->linhas->sum('subtotal');
         $totalIva = $proposta->linhas->sum(fn($l) => $l->subtotal * $l->iva / 100);
@@ -157,7 +157,7 @@
         </div>
     </div>
 
-    <!-- Footer -->
+    <!-- Rodapé com contactos da empresa. -->
     <div class="footer">
         {{ $empresa?->nome }} &bull; {{ $empresa?->email }} &bull; {{ $empresa?->telefone }}
     </div>

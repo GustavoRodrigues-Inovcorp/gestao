@@ -37,6 +37,7 @@
 </head>
 <body>
 <div class="page">
+    <!-- Cabeçalho do documento com identificação da empresa e do número da encomenda. -->
     <div class="header">
         <div class="logo-area">
             <h1>{{ $empresa?->nome ?? 'Empresa' }}</h1>
@@ -50,6 +51,7 @@
         </div>
     </div>
 
+    <!-- Bloco com a entidade emissora e o cliente destinatário. -->
     <div class="parties">
         <div class="party">
             <div class="party-label">De</div>
@@ -71,6 +73,7 @@
         </div>
     </div>
 
+    <!-- Datas principais do documento. -->
     <div class="dates">
         <div class="date-item">
             <div class="date-label">Data</div>
@@ -82,6 +85,7 @@
         </div>
     </div>
 
+    <!-- Linhas da encomenda com totais por linha. -->
     <table>
         <thead>
             <tr>
@@ -108,6 +112,7 @@
     </table>
 
     @php
+        // Totais agregados para apresentação no fim do documento.
         $subtotalSemIva = $encomenda->linhas->sum('subtotal');
         $totalIva = $encomenda->linhas->sum(fn($l) => $l->subtotal * $l->iva / 100);
         $total = $subtotalSemIva + $totalIva;

@@ -43,10 +43,13 @@ Route::middleware(['auth'])->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::put('/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
 
-    // VIES
+    // VIES - Lookup do Registo de IVA Europeu (Países-Membros da UE)
+    // GET /vies/lookup - Consulta base de dados VIES para obter dados de entidades NIF estrangeiras
     Route::get('/vies/lookup', [ViesController::class, 'lookup'])->name('vies.lookup');
 
-    // Entidades
+    // Entidades - Gestão de Clientes e Fornecedores (Tabela base para Propostas/Encomendas)
+    // GET /clientes - Lista todas as entidades tipo Cliente
+    // GET /fornecedores - Lista todas as entidades tipo Fornecedor
     Route::get('/clientes', [EntidadeController::class, 'clientes'])->name('clientes');
     Route::get('/fornecedores', [EntidadeController::class, 'fornecedores'])->name('fornecedores');
     Route::post('/entidades', [EntidadeController::class, 'store'])->name('entidades.store');
@@ -58,7 +61,11 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('contactos', ContactoController::class)
         ->except(['create', 'edit', 'show']);
 
-    // Propostas
+    // Propostas - Orçamentos de Venda (passo 1 do fluxo de vendas)
+    // Resource CRUD: GET /propostas (lista), POST /propostas (criar), PUT /propostas/{id} (editar), DELETE /propostas/{id} (apagar)
+    // GET /propostas/{id}/pdf - Exporta proposta em PDF (para impressão/email)
+    // POST /propostas/{id}/converter - Converte proposta fechada em Encomenda (passo 2 do fluxo)
+    // GET /propostas/{id}/linhas - API para carregar linhas da proposta em modals de edição
     Route::resource('propostas', PropostaController::class)
         ->except(['create', 'edit', 'show']);
     Route::get('/propostas/{proposta}/pdf', [PropostaController::class, 'pdf'])->name('propostas.pdf');
