@@ -118,6 +118,7 @@ const estadoBadge = { rascunho: 'secondary', fechado: 'default' }
         </template>
 
         <div class="space-y-4">
+            <!-- Ação principal: criar uma encomenda de fornecedor. -->
             <div class="flex justify-end">
                 <Dialog v-model:open="showCreate">
                     <DialogTrigger as-child>
@@ -157,7 +158,7 @@ const estadoBadge = { rascunho: 'secondary', fechado: 'default' }
                                 </div>
                             </div>
 
-                            <!-- Linhas -->
+                            <!-- Linhas da encomenda de fornecedor. -->
                             <div class="space-y-2">
                                 <div class="flex items-center justify-between">
                                     <Label>Artigos</Label>
@@ -177,6 +178,7 @@ const estadoBadge = { rascunho: 'secondary', fechado: 'default' }
                                             <X class="w-3.5 h-3.5" />
                                         </Button>
                                     </div>
+                                    <!-- Identificação da linha. -->
                                     <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 8px;">
                                         <div class="space-y-1">
                                             <Label class="text-xs">Artigo</Label>
@@ -196,6 +198,7 @@ const estadoBadge = { rascunho: 'secondary', fechado: 'default' }
                                             <Input v-model="linha.referencia" class="h-8 text-xs" />
                                         </div>
                                     </div>
+                                    <!-- Quantidades e custo da linha. -->
                                     <div style="display: grid; grid-template-columns: 2fr 0.5fr 1fr 0.5fr; gap: 8px; align-items: end;">
                                         <div class="space-y-1">
                                             <Label class="text-xs">Nome *</Label>
@@ -231,7 +234,7 @@ const estadoBadge = { rascunho: 'secondary', fechado: 'default' }
                 </Dialog>
             </div>
 
-            <!-- Tabela -->
+            <!-- Tabela das encomendas de fornecedor. -->
             <div class="rounded-lg border bg-card">
                 <table class="w-full text-sm">
                     <thead class="border-b bg-muted/50">

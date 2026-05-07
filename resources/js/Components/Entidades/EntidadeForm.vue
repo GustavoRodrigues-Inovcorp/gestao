@@ -21,6 +21,7 @@ const viesLoading = ref(false)
 const viesError = ref('')
 const viesSuccess = ref('')
 
+// Formata automaticamente o código postal enquanto o utilizador escreve.
 watch(() => props.form.codigo_postal, (val) => {
     if (!val) return
     const digits = val.replace(/\D/g, '')
@@ -53,7 +54,7 @@ async function lookupVies() {
     viesLoading.value = true
 
     try {
-        // Extrai código do país (primeiras 2 letras se existirem, senão usa PT)
+        // Extrai o país do NIF e consulta o VIES para preencher campos fiscais.
         const nif = props.form.nif.trim()
         const countryMatch = nif.match(/^([A-Za-z]{2})/)
         const countryCode = countryMatch ? countryMatch[1].toUpperCase() : 'PT'

@@ -132,6 +132,7 @@ const estadoBadge = {
         </template>
 
         <div class="space-y-4">
+            <!-- Cabeçalho com ação principal de criação. -->
             <div class="flex justify-end">
                 <Dialog v-model:open="showCreate">
                     <DialogTrigger as-child>
@@ -175,7 +176,7 @@ const estadoBadge = {
                                 </div>
                             </div>
 
-                            <!-- Linhas -->
+                            <!-- Linhas da proposta. -->
                             <div class="space-y-2">
                                 <div class="flex items-center justify-between">
                                     <Label>Artigos</Label>
@@ -196,7 +197,7 @@ const estadoBadge = {
                                         </Button>
                                     </div>
 
-                                    <!-- Linha 1: Artigo + Fornecedor + Referência -->
+                                    <!-- Dados de identificação da linha. -->
                                     <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 8px;">
                                         <div class="space-y-1">
                                             <Label class="text-xs">Artigo</Label>
@@ -230,7 +231,7 @@ const estadoBadge = {
                                         </div>
                                     </div>
 
-                                    <!-- Linha 2: Nome + Qtd + Preço Venda + Preço Custo + IVA -->
+                                    <!-- Quantidade e valores da linha. -->
                                     <div style="display: grid; grid-template-columns: 2fr 0.5fr 1fr 1fr 0.5fr; gap: 8px; align-items: end;">
                                         <div class="space-y-1">
                                             <Label class="text-xs">Nome *</Label>
@@ -271,7 +272,7 @@ const estadoBadge = {
                 </Dialog>
             </div>
 
-            <!-- Tabela -->
+            <!-- Tabela de propostas existentes. -->
             <div class="rounded-lg border bg-card">
                 <table class="w-full text-sm">
                     <thead class="border-b bg-muted/50">

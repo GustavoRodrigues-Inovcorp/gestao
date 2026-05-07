@@ -76,6 +76,7 @@ function formatPrice(val) {
         </template>
 
         <div class="space-y-4">
+            <!-- Ação principal: criar um novo artigo. -->
             <div class="flex justify-end">
                 <Dialog v-model:open="showCreate">
                     <DialogTrigger as-child>
@@ -148,6 +149,7 @@ function formatPrice(val) {
                 </Dialog>
             </div>
 
+            <!-- Tabela de artigos com fotografia, preço e estado. -->
             <div class="rounded-lg border bg-card">
                 <table class="w-full text-sm">
                     <thead class="border-b bg-muted/50">
