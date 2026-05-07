@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('contactos', function (Blueprint $table) {
             $table->id();
             $table->integer('numero')->unique();
-            $table->foreignId('entidade_id')->constrained('entidades')->cascadeOnDelete();
+            $table->foreignId('entidade_id')->nullable()->constrained('entidades')->nullOnDelete();
             $table->string('nome');
             $table->string('apelido')->nullable();
             $table->foreignId('funcao_id')->nullable()->constrained('contactos_funcoes')->nullOnDelete();
