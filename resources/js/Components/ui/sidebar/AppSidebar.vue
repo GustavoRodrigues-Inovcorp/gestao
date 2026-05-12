@@ -26,8 +26,8 @@ const navigation = [
         icon: Landmark,
         children: [
             { name: 'Contas Bancárias', href: '/financeiro/contas-bancarias' },
-            { name: 'Conta Corrente Clientes', href: '/financeiro/conta-corrente' },
-            { name: 'Faturas Fornecedores', href: '/financeiro/faturas-fornecedores' },
+            { name: 'Conta Corrente Clientes', href: '/financeiro/conta-corrente-clientes' },
+            { name: 'Faturas Fornecedores', href: '/financeiro/faturas-fornecedor' },
         ]
     },
     { name: 'Arquivo Digital', href: '/arquivo-digital', icon: FolderOpen },
@@ -43,7 +43,7 @@ const navigation = [
         name: 'Configurações',
         icon: Settings,
         children: [
-            { name: 'Entidades - Países', href: '/configuracoes/paises' },
+            { name: 'Países', href: '/configuracoes/paises' },
             { name: 'Contactos - Funções', href: '/configuracoes/funcoes' },
             { name: 'Calendário - Tipos', href: '/configuracoes/calendario-tipos' },
             { name: 'Calendário - Ações', href: '/configuracoes/calendario-acoes' },
