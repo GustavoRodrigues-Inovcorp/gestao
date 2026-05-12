@@ -1,6 +1,7 @@
 <?php
 namespace App\Http\Controllers;
 
+use App\Helpers\LogHelper;
 use App\Models\Entidade;
 use App\Models\Pais;
 use Illuminate\Http\Request;
@@ -11,10 +12,7 @@ class EntidadeController extends Controller
     public function clientes()
     {
         return Inertia::render('Entidades/Clientes', [
-            'entidades' => Entidade::with('pais')
-                ->where('is_cliente', true)
-                ->orderBy('nome')
-                ->get(),
+            'entidades' => Entidade::with('pais')->where('is_cliente', true)->orderBy('nome')->get(),
             'paises' => Pais::where('ativo', true)->orderBy('nome')->get(['id', 'nome']),
             'proximoNumero' => Entidade::proximoNumero(),
         ]);
@@ -23,10 +21,7 @@ class EntidadeController extends Controller
     public function fornecedores()
     {
         return Inertia::render('Entidades/Fornecedores', [
-            'entidades' => Entidade::with('pais')
-                ->where('is_fornecedor', true)
-                ->orderBy('nome')
-                ->get(),
+            'entidades' => Entidade::with('pais')->where('is_fornecedor', true)->orderBy('nome')->get(),
             'paises' => Pais::where('ativo', true)->orderBy('nome')->get(['id', 'nome']),
             'proximoNumero' => Entidade::proximoNumero(),
         ]);
@@ -52,16 +47,17 @@ class EntidadeController extends Controller
             'ativo'         => ['boolean'],
         ]);
 
-        // Valida NIF duplicado
         if (!empty($validated['nif'])) {
-            $exists = Entidade::where('nif', $validated['nif'])->exists();
-            if ($exists) {
+            if (Entidade::where('nif', $validated['nif'])->exists()) {
                 return back()->withErrors(['nif' => 'Este NIF já existe.']);
             }
         }
 
         $validated['numero'] = Entidade::proximoNumero();
-        Entidade::create($validated);
+        $entidade = Entidade::create($validated);
+
+        $tipo = $entidade->is_cliente && $entidade->is_fornecedor ? 'Cliente/Fornecedor' : ($entidade->is_cliente ? 'Cliente' : 'Fornecedor');
+        LogHelper::log('Clientes / Fornecedores', "Criou {$tipo}: {$entidade->nome}");
 
         return back()->with('success', 'Entidade criada com sucesso.');
     }
@@ -87,20 +83,20 @@ class EntidadeController extends Controller
         ]);
 
         if (!empty($validated['nif'])) {
-            $exists = Entidade::where('nif', $validated['nif'])
-                ->where('id', '!=', $entidade->id)
-                ->exists();
-            if ($exists) {
+            if (Entidade::where('nif', $validated['nif'])->where('id', '!=', $entidade->id)->exists()) {
                 return back()->withErrors(['nif' => 'Este NIF já existe.']);
             }
         }
 
         $entidade->update($validated);
+        LogHelper::log('Clientes / Fornecedores', "Atualizou entidade: {$entidade->nome}");
+
         return back()->with('success', 'Entidade atualizada.');
     }
 
     public function destroy(Entidade $entidade)
     {
+        LogHelper::log('Clientes / Fornecedores', "Eliminou entidade: {$entidade->nome}");
         $entidade->delete();
         return back();
     }

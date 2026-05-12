@@ -1,6 +1,7 @@
 <?php
 namespace App\Http\Controllers\Acessos;
 
+use App\Helpers\LogHelper;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -50,6 +51,7 @@ class UtilizadorController extends Controller
             $user->assignRole($request->role);
         }
 
+        LogHelper::log('Utilizadores', "Criou utilizador: {$user->name}");
         return back();
     }
 
@@ -71,12 +73,13 @@ class UtilizadorController extends Controller
             $utilizador->syncRoles([]);
         }
 
+        LogHelper::log('Utilizadores', "Atualizou utilizador: {$utilizador->name}");
         return back();
     }
 
     public function destroy(User $utilizador)
     {
-        abort_if($utilizador->id === auth()->id(), 403, 'Não podes eliminar a tua própria conta.');
+        LogHelper::log('Utilizadores', "Eliminou utilizador: {$utilizador->name}");
         $utilizador->delete();
         return back();
     }

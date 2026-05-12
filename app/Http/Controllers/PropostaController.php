@@ -1,6 +1,7 @@
 <?php
 namespace App\Http\Controllers;
 
+use App\Helpers\LogHelper;
 use App\Models\Proposta;
 use App\Models\Entidade;
 use App\Models\Artigo;
@@ -8,55 +9,43 @@ use App\Models\Empresa;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Carbon\Carbon;
 
 class PropostaController extends Controller
 {
     public function index()
     {
-        // Dados necessários para a listagem e para os formulários de criação/edição.
         return Inertia::render('Propostas/Index', [
-            'propostas' => Proposta::with('entidade')
-                ->orderByDesc('id')
-                ->get()
-                ->map(fn($p) => [
-                    'id'          => $p->id,
-                    'numero'      => $p->numero,
-                    'data'        => $p->data?->format('d/m/Y'),
-                    'validade'    => $p->validade?->format('d/m/Y'),
-                    'cliente'     => $p->entidade->nome,
-                    'valor_total' => $p->valor_total,
-                    'estado'      => $p->estado,
-                ]),
-            'clientes' => Entidade::query()->where('is_cliente', '=', true)
-                ->where('ativo', true)
-                ->orderBy('nome')
-                ->get(['id', 'nome']),
-            'artigos' => Artigo::query()->where('ativo', '=', true)
-                ->orderBy('nome')
-                ->get(['id', 'referencia', 'nome', 'preco', 'iva_id']),
-            'fornecedores' => Entidade::query()->where('is_fornecedor', '=', true)
-                ->where('ativo', true)
-                ->orderBy('nome')
-                ->get(['id', 'nome']),
-            'proximoNumero' => Proposta::proximoNumero(),
+            'propostas' => Proposta::with('entidade')->orderByDesc('id')->get()->map(fn($p) => [
+                'id'           => $p->id,
+                'numero'       => $p->numero,
+                'data'         => $p->data?->format('d/m/Y'),
+                'validade'     => $p->validade?->format('d/m/Y'),
+                'validade_raw' => $p->validade?->format('Y-m-d'),
+                'entidade_id'  => $p->entidade_id,
+                'cliente'      => $p->entidade->nome,
+                'valor_total'  => $p->valor_total,
+                'estado'       => $p->estado,
+            ]),
+            'clientes'       => Entidade::where('is_cliente', true)->where('ativo', true)->orderBy('nome')->get(['id', 'nome']),
+            'artigos'        => Artigo::where('ativo', true)->orderBy('nome')->get(['id', 'referencia', 'nome', 'preco', 'iva_id']),
+            'fornecedores'   => Entidade::where('is_fornecedor', true)->where('ativo', true)->orderBy('nome')->get(['id', 'nome']),
+            'proximoNumero'  => Proposta::proximoNumero(),
         ]);
     }
 
     public function store(Request $request)
     {
-        // Cria a proposta e as respetivas linhas numa única operação.
         $validated = $request->validate([
-            'entidade_id' => ['required', 'exists:entidades,id'],
-            'validade'    => ['nullable', 'date'],
-            'estado'      => ['required', 'in:rascunho,fechado'],
-            'linhas'      => ['required', 'array', 'min:1'],
-            'linhas.*.nome'        => ['required', 'string'],
-            'linhas.*.quantidade'  => ['required', 'integer', 'min:1'],
-            'linhas.*.preco_venda' => ['required', 'numeric', 'min:0'],
-            'linhas.*.preco_custo' => ['nullable', 'numeric', 'min:0'],
-            'linhas.*.iva'         => ['nullable', 'numeric', 'min:0'],
-            'linhas.*.artigo_id'   => ['nullable', 'exists:artigos,id'],
+            'entidade_id'            => ['required', 'exists:entidades,id'],
+            'validade'               => ['nullable', 'date'],
+            'estado'                 => ['required', 'in:rascunho,fechado'],
+            'linhas'                 => ['required', 'array', 'min:1'],
+            'linhas.*.nome'          => ['required', 'string'],
+            'linhas.*.quantidade'    => ['required', 'integer', 'min:1'],
+            'linhas.*.preco_venda'   => ['required', 'numeric', 'min:0'],
+            'linhas.*.preco_custo'   => ['nullable', 'numeric', 'min:0'],
+            'linhas.*.iva'           => ['nullable', 'numeric', 'min:0'],
+            'linhas.*.artigo_id'     => ['nullable', 'exists:artigos,id'],
             'linhas.*.fornecedor_id' => ['nullable', 'exists:entidades,id'],
         ]);
 
@@ -70,39 +59,38 @@ class PropostaController extends Controller
         ]);
 
         foreach ($validated['linhas'] as $linha) {
-            $subtotal = $linha['quantidade'] * $linha['preco_venda'];
             $proposta->linhas()->create([
-                'artigo_id'    => $linha['artigo_id'] ?? null,
+                'artigo_id'     => $linha['artigo_id'] ?? null,
                 'fornecedor_id' => $linha['fornecedor_id'] ?? null,
-                'referencia'   => $linha['referencia'] ?? null,
-                'nome'         => $linha['nome'],
-                'quantidade'   => $linha['quantidade'],
-                'preco_venda'  => $linha['preco_venda'],
-                'preco_custo'  => $linha['preco_custo'] ?? 0,
-                'iva'          => $linha['iva'] ?? 0,
-                'subtotal'     => $subtotal,
+                'referencia'    => $linha['referencia'] ?? null,
+                'nome'          => $linha['nome'],
+                'quantidade'    => $linha['quantidade'],
+                'preco_venda'   => $linha['preco_venda'],
+                'preco_custo'   => $linha['preco_custo'] ?? 0,
+                'iva'           => $linha['iva'] ?? 0,
+                'subtotal'      => $linha['quantidade'] * $linha['preco_venda'],
             ]);
         }
 
         $proposta->calcularTotal();
+        LogHelper::log('Propostas', "Criou proposta Nº {$proposta->numero}");
 
         return back()->with('success', 'Proposta criada.');
     }
 
     public function update(Request $request, Proposta $proposta)
     {
-        // Atualiza o cabeçalho e recria as linhas para manter os totais consistentes.
         $validated = $request->validate([
-            'entidade_id' => ['required', 'exists:entidades,id'],
-            'validade'    => ['nullable', 'date'],
-            'estado'      => ['required', 'in:rascunho,fechado'],
-            'linhas'      => ['required', 'array', 'min:1'],
-            'linhas.*.nome'        => ['required', 'string'],
-            'linhas.*.quantidade'  => ['required', 'integer', 'min:1'],
-            'linhas.*.preco_venda' => ['required', 'numeric', 'min:0'],
-            'linhas.*.preco_custo' => ['nullable', 'numeric', 'min:0'],
-            'linhas.*.iva'         => ['nullable', 'numeric', 'min:0'],
-            'linhas.*.artigo_id'   => ['nullable', 'exists:artigos,id'],
+            'entidade_id'            => ['required', 'exists:entidades,id'],
+            'validade'               => ['nullable', 'date'],
+            'estado'                 => ['required', 'in:rascunho,fechado'],
+            'linhas'                 => ['required', 'array', 'min:1'],
+            'linhas.*.nome'          => ['required', 'string'],
+            'linhas.*.quantidade'    => ['required', 'integer', 'min:1'],
+            'linhas.*.preco_venda'   => ['required', 'numeric', 'min:0'],
+            'linhas.*.preco_custo'   => ['nullable', 'numeric', 'min:0'],
+            'linhas.*.iva'           => ['nullable', 'numeric', 'min:0'],
+            'linhas.*.artigo_id'     => ['nullable', 'exists:artigos,id'],
             'linhas.*.fornecedor_id' => ['nullable', 'exists:entidades,id'],
         ]);
 
@@ -116,7 +104,6 @@ class PropostaController extends Controller
         $proposta->linhas()->delete();
 
         foreach ($validated['linhas'] as $linha) {
-            $subtotal = $linha['quantidade'] * $linha['preco_venda'];
             $proposta->linhas()->create([
                 'artigo_id'     => $linha['artigo_id'] ?? null,
                 'fornecedor_id' => $linha['fornecedor_id'] ?? null,
@@ -126,32 +113,29 @@ class PropostaController extends Controller
                 'preco_venda'   => $linha['preco_venda'],
                 'preco_custo'   => $linha['preco_custo'] ?? 0,
                 'iva'           => $linha['iva'] ?? 0,
-                'subtotal'      => $subtotal,
+                'subtotal'      => $linha['quantidade'] * $linha['preco_venda'],
             ]);
         }
 
         $proposta->calcularTotal();
+        LogHelper::log('Propostas', "Atualizou proposta Nº {$proposta->numero}");
 
         return back()->with('success', 'Proposta atualizada.');
     }
 
     public function destroy(Proposta $proposta)
     {
+        LogHelper::log('Propostas', "Eliminou proposta Nº {$proposta->numero}");
         $proposta->delete();
         return back();
     }
 
     public function pdf(Proposta $proposta)
     {
-        // Gera o documento em PDF com os dados já carregados.
         $proposta->load(['entidade', 'linhas.artigo']);
         $empresa = Empresa::first();
-
-        $pdf = Pdf::loadView('pdf.proposta', [
-            'proposta' => $proposta,
-            'empresa'  => $empresa,
-        ])->setPaper('a4');
-
+        LogHelper::log('Propostas', "Download PDF proposta Nº {$proposta->numero}");
+        $pdf = Pdf::loadView('pdf.proposta', ['proposta' => $proposta, 'empresa' => $empresa])->setPaper('a4');
         return $pdf->download('proposta-' . $proposta->numero . '.pdf');
     }
 
@@ -159,7 +143,6 @@ class PropostaController extends Controller
     {
         abort_unless($proposta->estado === 'fechado', 422, 'Só é possível converter propostas fechadas.');
 
-        // A conversão reaproveita as linhas da proposta para criar a encomenda.
         $encomenda = \App\Models\Encomenda::create([
             'numero'      => \App\Models\Encomenda::proximoNumero(),
             'entidade_id' => $proposta->entidade_id,
@@ -176,6 +159,8 @@ class PropostaController extends Controller
                 'preco_custo', 'iva', 'subtotal',
             ]));
         }
+
+        LogHelper::log('Propostas', "Converteu proposta Nº {$proposta->numero} em encomenda Nº {$encomenda->numero}");
 
         return back()->with('success', 'Proposta convertida em encomenda.');
     }

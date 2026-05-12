@@ -1,6 +1,7 @@
 <?php
 namespace App\Http\Controllers;
 
+use App\Helpers\LogHelper;
 use App\Models\Contacto;
 use App\Models\ContactoFuncao;
 use App\Models\Entidade;
@@ -16,27 +17,23 @@ class ContactoController extends Controller
                 ->orderBy('nome')
                 ->get()
                 ->map(fn($c) => [
-                    'id'       => $c->id,
-                    'numero'   => $c->numero,
-                    'nome'     => $c->nome,
-                    'apelido'  => $c->apelido,
-                    'funcao'   => $c->funcao?->nome,
-                    'funcao_id' => $c->funcao_id,
-                    'entidade' => $c->entidade?->nome,
+                    'id'          => $c->id,
+                    'numero'      => $c->numero,
+                    'nome'        => $c->nome,
+                    'apelido'     => $c->apelido,
+                    'funcao'      => $c->funcao?->nome,
+                    'funcao_id'   => $c->funcao_id,
+                    'entidade'    => $c->entidade?->nome,
                     'entidade_id' => $c->entidade_id,
-                    'telefone' => $c->telefone,
-                    'telemovel' => $c->telemovel,
-                    'email'    => $c->email,
-                    'rgpd'     => $c->rgpd,
+                    'telefone'    => $c->telefone,
+                    'telemovel'   => $c->telemovel,
+                    'email'       => $c->email,
+                    'rgpd'        => $c->rgpd,
                     'observacoes' => $c->observacoes,
-                    'ativo'    => $c->ativo,
+                    'ativo'       => $c->ativo,
                 ]),
-            'entidades' => Entidade::where('ativo', true)
-                ->orderBy('nome')
-                ->get(['id', 'nome']),
-            'funcoes' => ContactoFuncao::where('ativo', true)
-                ->orderBy('nome')
-                ->get(['id', 'nome']),
+            'entidades' => Entidade::where('ativo', true)->orderBy('nome')->get(['id', 'nome']),
+            'funcoes'   => ContactoFuncao::where('ativo', true)->orderBy('nome')->get(['id', 'nome']),
             'proximoNumero' => Contacto::proximoNumero(),
         ]);
     }
@@ -57,7 +54,9 @@ class ContactoController extends Controller
         ]);
 
         $validated['numero'] = Contacto::proximoNumero();
-        Contacto::create($validated);
+        $contacto = Contacto::create($validated);
+
+        LogHelper::log('Contactos', "Criou contacto: {$contacto->nome} {$contacto->apelido}");
 
         return back()->with('success', 'Contacto criado com sucesso.');
     }
@@ -78,11 +77,14 @@ class ContactoController extends Controller
         ]);
 
         $contacto->update($validated);
+        LogHelper::log('Contactos', "Atualizou contacto: {$contacto->nome} {$contacto->apelido}");
+
         return back()->with('success', 'Contacto atualizado.');
     }
 
     public function destroy(Contacto $contacto)
     {
+        LogHelper::log('Contactos', "Eliminou contacto: {$contacto->nome} {$contacto->apelido}");
         $contacto->delete();
         return back();
     }
