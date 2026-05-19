@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useForm } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
+import { useMenuPermissions } from '@/composables/useMenuPermissions'
 import { Button } from '@/Components/ui/button'
 import { Input } from '@/Components/ui/input'
 import { Label } from '@/Components/ui/label'
@@ -14,6 +15,8 @@ import { Plus, Pencil, Trash2 } from 'lucide-vue-next'
 
 const props = defineProps({ paises: Array })
 
+const { can } = useMenuPermissions('configuracoes')
+
 const showCreate = ref(false)
 const showEdit = ref(false)
 const editing = ref(null)
@@ -22,6 +25,7 @@ const createForm = useForm({ nome: '', codigo: '' })
 const editForm = useForm({ nome: '', codigo: '', ativo: true })
 
 function openEdit(pais) {
+    if (!can('update')) return
     editing.value = pais
     editForm.nome = pais.nome
     editForm.codigo = pais.codigo
@@ -30,18 +34,21 @@ function openEdit(pais) {
 }
 
 function submitCreate() {
+    if (!can('create')) return
     createForm.post('/configuracoes/paises', {
         onSuccess: () => { showCreate.value = false; createForm.reset() }
     })
 }
 
 function submitEdit() {
+    if (!can('update')) return
     editForm.put(`/configuracoes/paises/${editing.value.id}`, {
         onSuccess: () => { showEdit.value = false }
     })
 }
 
 function destroy(pais) {
+    if (!can('delete')) return
     if (confirm(`Eliminar "${pais.nome}"?`)) {
         useForm({}).delete(`/configuracoes/paises/${pais.id}`)
     }
@@ -55,7 +62,7 @@ function destroy(pais) {
         </template>
 
         <div class="space-y-4">
-            <div class="flex justify-end">
+            <div v-if="can('create')" class="flex justify-end">
                 <Dialog v-model:open="showCreate">
                     <DialogTrigger as-child>
                         <Button size="sm" class="gap-2">
@@ -86,8 +93,8 @@ function destroy(pais) {
             </div>
 
             <!-- Tabela -->
-            <div class="rounded-lg border bg-card">
-                <table class="w-full text-sm">
+            <div class="w-full overflow-x-auto rounded-lg border bg-card">
+                <table class="w-full text-sm min-w-max">
                     <thead class="border-b bg-muted/50">
                         <tr>
                             <th class="px-4 py-3 text-left font-medium text-muted-foreground">Nome</th>
@@ -112,10 +119,10 @@ function destroy(pais) {
                             </td>
                             <td class="px-4 py-3 text-right">
                                 <div class="flex justify-end gap-2">
-                                    <Button size="icon" variant="ghost" @click="openEdit(pais)">
+                                    <Button v-if="can('update')" size="icon" variant="ghost" @click="openEdit(pais)">
                                         <Pencil class="w-4 h-4" />
                                     </Button>
-                                    <Button size="icon" variant="ghost" class="text-destructive hover:text-destructive" @click="destroy(pais)">
+                                    <Button v-if="can('delete')" size="icon" variant="ghost" class="text-destructive hover:text-destructive" @click="destroy(pais)">
                                         <Trash2 class="w-4 h-4" />
                                     </Button>
                                 </div>
@@ -127,7 +134,7 @@ function destroy(pais) {
         </div>
 
         <!-- Dialog Editar -->
-        <Dialog v-model:open="showEdit">
+        <Dialog v-if="can('update')" v-model:open="showEdit">
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>Editar País</DialogTitle>

@@ -76,48 +76,50 @@ async function disableTwoFactor() {
             <h1 class="text-sm font-semibold">Perfil</h1>
         </template>
 
-        <div class="max-w-2xl space-y-6">
+        <div class="space-y-6">
 
-            <!-- Dados do Perfil -->
-            <div class="rounded-lg border bg-card p-6 space-y-4">
-                <h2 class="font-semibold text-base">Informação do Perfil</h2>
-                <div class="space-y-3">
-                    <div class="space-y-1">
-                        <Label>Nome</Label>
-                        <Input v-model="profileForm.name" />
-                        <p v-if="profileForm.errors.name" class="text-xs text-destructive">{{ profileForm.errors.name }}</p>
+            <div class="flex grid gap-6 mt-6 md:grid-cols-2">
+                <!-- Dados do Perfil -->
+                <div class="rounded-lg border bg-card p-6 space-y-4">
+                    <h2 class="font-semibold text-base">Informação do Perfil</h2>
+                    <div class="space-y-3">
+                        <div class="space-y-1">
+                            <Label>Nome</Label>
+                            <Input v-model="profileForm.name" />
+                            <p v-if="profileForm.errors.name" class="text-xs text-destructive">{{ profileForm.errors.name }}</p>
+                        </div>
+                        <div class="space-y-1">
+                            <Label>Email</Label>
+                            <Input v-model="profileForm.email" type="email" />
+                            <p v-if="profileForm.errors.email" class="text-xs text-destructive">{{ profileForm.errors.email }}</p>
+                        </div>
                     </div>
-                    <div class="space-y-1">
-                        <Label>Email</Label>
-                        <Input v-model="profileForm.email" type="email" />
-                        <p v-if="profileForm.errors.email" class="text-xs text-destructive">{{ profileForm.errors.email }}</p>
-                    </div>
+                    <Button @click="updateProfile" :disabled="profileForm.processing">
+                        Guardar
+                    </Button>
                 </div>
-                <Button @click="updateProfile" :disabled="profileForm.processing">
-                    Guardar
-                </Button>
-            </div>
 
-            <!-- Alterar Password -->
-            <div class="rounded-lg border bg-card p-6 space-y-4">
-                <h2 class="font-semibold text-base">Alterar Password</h2>
-                <div class="space-y-3">
-                    <div class="space-y-1">
-                        <Label>Password Atual</Label>
-                        <Input v-model="passwordForm.current_password" type="password" />
+                <!-- Alterar Password -->
+                <div class="rounded-lg border bg-card p-6 space-y-4">
+                    <h2 class="font-semibold text-base">Alterar Password</h2>
+                    <div class="space-y-3">
+                        <div class="space-y-1">
+                            <Label>Password Atual</Label>
+                            <Input v-model="passwordForm.current_password" type="password" />
+                        </div>
+                        <div class="space-y-1">
+                            <Label>Nova Password</Label>
+                            <Input v-model="passwordForm.password" type="password" />
+                        </div>
+                        <div class="space-y-1">
+                            <Label>Confirmar Password</Label>
+                            <Input v-model="passwordForm.password_confirmation" type="password" />
+                        </div>
                     </div>
-                    <div class="space-y-1">
-                        <Label>Nova Password</Label>
-                        <Input v-model="passwordForm.password" type="password" />
-                    </div>
-                    <div class="space-y-1">
-                        <Label>Confirmar Password</Label>
-                        <Input v-model="passwordForm.password_confirmation" type="password" />
-                    </div>
+                    <Button @click="updatePassword" :disabled="passwordForm.processing">
+                        Atualizar Password
+                    </Button>
                 </div>
-                <Button @click="updatePassword" :disabled="passwordForm.processing">
-                    Atualizar Password
-                </Button>
             </div>
 
             <!-- 2FA -->

@@ -2,9 +2,12 @@
 import { ref, computed } from 'vue'
 import { useForm } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
+import { useMenuPermissions } from '@/composables/useMenuPermissions'
 import { Button } from '@/Components/ui/button'
 import { Input } from '@/Components/ui/input'
 import { Label } from '@/Components/ui/label'
+import ViewSheet from '@/Components/ui/sheet/ViewSheet.vue'
+
 import {
     Dialog, DialogContent, DialogHeader,
     DialogTitle, DialogTrigger, DialogFooter,
@@ -21,8 +24,12 @@ const props = defineProps({
     entidades: Array,
 })
 
+const { can } = useMenuPermissions('arquivo_digital')
+
 const showCreate = ref(false)
 const search = ref('')
+const showView = ref(false)
+const viewing = ref(null)
 
 const filtered = computed(() => {
     if (!search.value) return props.ficheiros
@@ -52,6 +59,7 @@ function onFileChange(e) {
 }
 
 function submitCreate() {
+    if (!can('create')) return
     createForm.post('/arquivo-digital', {
         forceFormData: true,
         onSuccess: () => {
@@ -62,6 +70,7 @@ function submitCreate() {
 }
 
 function destroy(ficheiro) {
+    if (!can('delete')) return
     if (confirm(`Eliminar "${ficheiro.nome}"?`)) {
         useForm({}).delete(`/arquivo-digital/${ficheiro.id}`)
     }
@@ -80,6 +89,23 @@ function fileIconColor(mime) {
     if (mime.includes('pdf')) return 'text-red-500'
     return 'text-muted-foreground'
 }
+
+function openView(entidade) {
+    viewing.value = entidade
+    showView.value = true
+}
+
+function viewFields(f) {
+    if (!f) return []
+    return [
+        { label: 'Nome', value: f.nome },
+        { label: 'Entidade', value: f.entidade },
+        { label: 'Carregado por', value: f.user },
+        { label: 'Data', value: f.data },
+        { label: 'Tamanho', value: f.tamanho },
+        { label: 'Descrição', value: f.descricao },
+    ]
+}
 </script>
 
 <template>
@@ -95,7 +121,7 @@ function fileIconColor(mime) {
                     <Input v-model="search" placeholder="Pesquisar ficheiros..." class="pl-9" />
                 </div>
 
-                <Dialog v-model:open="showCreate">
+                <Dialog v-if="can('create')" v-model:open="showCreate">
                     <DialogTrigger as-child>
                         <Button size="sm" class="gap-2">
                             <Plus class="w-4 h-4" /> Carregar Ficheiro
@@ -142,8 +168,8 @@ function fileIconColor(mime) {
                 </Dialog>
             </div>
 
-            <div class="rounded-lg border bg-card">
-                <table class="w-full text-sm">
+            <div class="w-full overflow-x-auto rounded-lg border bg-card">
+                <table class="w-full text-sm min-w-max">
                     <thead class="border-b bg-muted/50">
                         <tr>
                             <th class="px-4 py-3 text-left font-medium text-muted-foreground">Ficheiro</th>
@@ -160,7 +186,7 @@ function fileIconColor(mime) {
                                 Nenhum ficheiro encontrado.
                             </td>
                         </tr>
-                        <tr v-for="f in filtered" :key="f.id" class="border-b last:border-0 hover:bg-muted/30">
+                        <tr v-for="f in filtered" :key="f.id" class="border-b last:border-0 hover:bg-muted/30" @click="openView(f)">
                             <td class="px-4 py-3">
                                 <div class="flex items-center gap-2">
                                     <component :is="fileIcon(f.tipo_mime)" :class="['w-4 h-4', fileIconColor(f.tipo_mime)]" />
@@ -175,11 +201,11 @@ function fileIconColor(mime) {
                             <td class="px-4 py-3 text-muted-foreground">{{ f.data }}</td>
                             <td class="px-4 py-3 text-muted-foreground">{{ f.tamanho }}</td>
                             <td class="px-4 py-3 text-right">
-                                <div class="flex justify-end gap-1">
+                                <div class="flex justify-end gap-1" @click.stop>
                                     <Button size="icon" variant="ghost" as="a" :href="f.url" title="Download">
                                         <Download class="w-4 h-4" />
                                     </Button>
-                                    <Button size="icon" variant="ghost" class="text-destructive hover:text-destructive" @click="destroy(f)">
+                                    <Button v-if="can('delete')" size="icon" variant="ghost" class="text-destructive hover:text-destructive" @click="destroy(f)">
                                         <Trash2 class="w-4 h-4" />
                                     </Button>
                                 </div>
@@ -189,5 +215,15 @@ function fileIconColor(mime) {
                 </table>
             </div>
         </div>
+        <ViewSheet
+            :open="showView"
+            :title="'Ficheiro — ' + (viewing?.nome ?? '')"
+            :fields="viewFields(viewing)"
+            :can-edit="can('update')"
+            :can-delete="can('delete')"
+            @update:open="showView = $event"
+            @edit="() => { showView = false; openEdit(viewing) }"
+            @delete="() => { showView = false; destroy(viewing) }"
+        />
     </AppLayout>
 </template>

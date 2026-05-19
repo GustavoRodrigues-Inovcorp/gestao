@@ -8,14 +8,15 @@ use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Mail\Mailables\Attachment;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Contracts\Queue\ShouldQueue;
 
-class ComprovativoPagamentoMail extends Mailable
+class ComprovativoPagamentoMail extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
 
     public function __construct(
         public FaturaFornecedor $fatura,
-        public string $comprativoPath,
+        public ?string $comprovativoPath = null,
     ) {}
 
     public function envelope(): Envelope
@@ -38,8 +39,17 @@ class ComprovativoPagamentoMail extends Mailable
 
     public function attachments(): array
     {
+        if (empty($this->comprovativoPath)) {
+            return [];
+        }
+
+        $full = storage_path('app/private/' . $this->comprovativoPath);
+        if (!file_exists($full)) {
+            return [];
+        }
+
         return [
-            Attachment::fromStorageDisk('private', $this->comprativoPath)
+            Attachment::fromPath($full)
                 ->as('comprovativo-' . $this->fatura->numero . '.pdf')
                 ->withMime('application/pdf'),
         ];

@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import AppLayout from '@/Layouts/AppLayout.vue'
+import { useMenuPermissions } from '@/composables/useMenuPermissions'
 import FullCalendar from '@fullcalendar/vue3'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
@@ -19,6 +20,7 @@ import {
 } from '@/Components/ui/select'
 import { Textarea } from '@/Components/ui/textarea'
 import { Trash2 } from 'lucide-vue-next'
+import { Plus } from 'lucide-vue-next'
 
 const props = defineProps({
     tipos: Array,
@@ -26,6 +28,8 @@ const props = defineProps({
     entidades: Array,
     utilizadores: Array,
 })
+
+const { can } = useMenuPermissions('calendario')
 
 // Filtros
 const filtroUser = ref(null)
@@ -50,7 +54,6 @@ function defaultForm() {
         acao_id: null,
         descricao: '',
         partilha: false,
-        conhecimento: false,
         estado: 'pendente',
     }
 }
@@ -96,14 +99,26 @@ function refetchEventos() {
 }
 
 function handleDateSelect(info) {
+    if (!can('create')) return
     isEdit.value = false
     form.value = defaultForm()
-    form.value.inicio = info.startStr.slice(0, 16)
-    form.value.fim = info.endStr.slice(0, 16)
+
+    // Garante formato correto para datetime-local
+    const start = info.startStr.length === 10
+        ? info.startStr + 'T00:00'
+        : info.startStr.slice(0, 16)
+
+    const end = info.endStr.length === 10
+        ? info.endStr + 'T00:00'
+        : info.endStr.slice(0, 16)
+
+    form.value.inicio = start
+    form.value.fim = end
     showDialog.value = true
 }
 
 function handleEventClick(info) {
+    if (!can('update') && !can('delete')) return
     isEdit.value = true
     const e = info.event
     const ep = e.extendedProps
@@ -126,62 +141,96 @@ function handleEventClick(info) {
 }
 
 async function handleEventDrop(info) {
+    if (!can('update')) {
+        info.revert()
+        return
+    }
     const e = info.event
-    await fetch(`/calendario/eventos/${e.id}`, {
-        method: 'PUT',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-        },
-        body: JSON.stringify({
-            titulo: e.title,
-            inicio: e.startStr,
-            fim: e.endStr,
-            duracao: e.extendedProps.duracao,
+    try {
+        await window.axios.put(`/calendario/eventos/${e.id}`, {
+            titulo:      e.title,
+            inicio:      e.startStr,
+            fim:         e.endStr,
+            duracao:     e.extendedProps.duracao,
             entidade_id: e.extendedProps.entidade_id,
-            tipo_id: e.extendedProps.tipo_id,
-            acao_id: e.extendedProps.acao_id,
-            descricao: e.extendedProps.descricao,
-            partilha: e.extendedProps.partilha,
+            tipo_id:     e.extendedProps.tipo_id,
+            acao_id:     e.extendedProps.acao_id,
+            descricao:   e.extendedProps.descricao,
+            partilha:    e.extendedProps.partilha,
             conhecimento: e.extendedProps.conhecimento,
-            estado: e.extendedProps.estado,
-        }),
-    })
+            estado:      e.extendedProps.estado,
+        })
+    } catch (e) {
+        console.error(e)
+    }
 }
 
 async function handleEventResize(info) {
+    if (!can('update')) {
+        info.revert()
+        return
+    }
     await handleEventDrop(info)
 }
 
 async function submitForm() {
+    if (isEdit.value && !can('update')) return
+    if (!isEdit.value && !can('create')) return
+
     const method = isEdit.value ? 'PUT' : 'POST'
     const url = isEdit.value
         ? `/calendario/eventos/${form.value.id}`
         : '/calendario/eventos'
 
-    await fetch(url, {
-        method,
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-        },
-        body: JSON.stringify(form.value),
-    })
+    try {
+        const payload = {
+            titulo:       form.value.titulo,
+            inicio:       form.value.inicio,
+            fim:          form.value.fim || null,
+            duracao:      form.value.duracao || null,
+            entidade_id:  form.value.entidade_id || null,
+            tipo_id:      form.value.tipo_id || null,
+            acao_id:      form.value.acao_id || null,
+            descricao:    form.value.descricao || null,
+            partilha:     form.value.partilha,
+            conhecimento: form.value.conhecimento,
+            estado:       form.value.estado,
+        }
 
-    showDialog.value = false
-    refetchEventos()
+        await window.axios({ method, url, data: payload })
+
+        showDialog.value = false
+        form.value = defaultForm()
+
+        // Força re-render completo do calendário
+        calendarRef.value?.getApi().refetchEvents()
+
+    } catch (err) {
+        console.error('Erro ao guardar evento:', err.response?.data || err)
+    }
 }
 
 async function deleteEvento() {
+    if (!can('delete')) return
     if (!confirm('Eliminar este evento?')) return
-    await fetch(`/calendario/eventos/${form.value.id}`, {
-        method: 'DELETE',
-        headers: {
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-        },
-    })
-    showDialog.value = false
-    refetchEventos()
+    try {
+        await window.axios.delete(`/calendario/eventos/${form.value.id}`)
+        showDialog.value = false
+        refetchEventos()
+    } catch (e) {
+        console.error(e)
+    }
+}
+
+function openNewEvent() {
+    isEdit.value = false
+    form.value = defaultForm()
+    // Data de hoje por defeito
+    const now = new Date()
+    const pad = n => String(n).padStart(2, '0')
+    const today = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`
+    form.value.inicio = today
+    showDialog.value = true
 }
 </script>
 
@@ -220,6 +269,12 @@ async function deleteEvento() {
                             </SelectItem>
                         </SelectContent>
                     </Select>
+                </div>
+                <div class="flex items-center justify-between w-full">
+                    <h1 class="text-sm font-semibold">Calendário</h1>
+                    <Button size="sm" class="gap-2" @click="openNewEvent">
+                        <Plus class="w-4 h-4" /> Novo Evento
+                    </Button>
                 </div>
             </div>
 
@@ -321,18 +376,14 @@ async function deleteEvento() {
                             <input type="checkbox" v-model="form.partilha" id="partilha" class="rounded" />
                             <Label for="partilha">Partilhar com equipa</Label>
                         </div>
-                        <div class="flex items-center gap-2">
-                            <input type="checkbox" v-model="form.conhecimento" id="conhecimento" class="rounded" />
-                            <Label for="conhecimento">Para conhecimento</Label>
-                        </div>
                     </div>
                 </div>
                 <DialogFooter class="gap-2">
-                    <Button v-if="isEdit" variant="destructive" size="sm" @click="deleteEvento" class="gap-1 mr-auto">
+                    <Button v-if="isEdit && can('delete')" variant="destructive" size="sm" @click="deleteEvento" class="gap-1 mr-auto">
                         <Trash2 class="w-4 h-4" /> Eliminar
                     </Button>
                     <Button variant="outline" @click="showDialog = false">Cancelar</Button>
-                    <Button @click="submitForm">Guardar</Button>
+                    <Button v-if="(!isEdit && can('create')) || (isEdit && can('update'))" @click="submitForm">Guardar</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

@@ -42,27 +42,26 @@ class CalendarioController extends Controller
         });
 
         return $query->get()->map(fn($e) => [
-            'id'          => $e->id,
-            'title'       => $e->titulo,
-            'start'       => $e->inicio->toISOString(),
-            'end'         => $e->fim?->toISOString(),
-            'color'       => $e->tipo?->cor ?? '#3b82f6',
-            'extendedProps' => [
-                'descricao'   => $e->descricao,
-                'estado'      => $e->estado,
-                'entidade'    => $e->entidade?->nome,
-                'entidade_id' => $e->entidade_id,
-                'tipo'        => $e->tipo?->nome,
-                'tipo_id'     => $e->tipo_id,
-                'acao'        => $e->acao?->nome,
-                'acao_id'     => $e->acao_id,
-                'user'        => $e->user->name,
-                'user_id'     => $e->user_id,
-                'partilha'    => $e->partilha,
-                'conhecimento' => $e->conhecimento,
-                'duracao'     => $e->duracao,
-            ],
-        ]);
+        'id'    => $e->id,
+        'title' => $e->titulo,
+        'start' => $e->inicio->format('Y-m-d\TH:i:s'),
+        'end'   => $e->fim && $e->fim != $e->inicio ? $e->fim->format('Y-m-d\TH:i:s') : null,
+        'color' => $e->tipo?->cor ?? '#3b82f6',
+        'extendedProps' => [
+            'descricao'    => $e->descricao,
+            'estado'       => $e->estado,
+            'entidade'     => $e->entidade?->nome,
+            'entidade_id'  => $e->entidade_id,
+            'tipo'         => $e->tipo?->nome,
+            'tipo_id'      => $e->tipo_id,
+            'acao'         => $e->acao?->nome,
+            'acao_id'      => $e->acao_id,
+            'user'         => $e->user->name,
+            'user_id'      => $e->user_id,
+            'partilha'     => $e->partilha,
+            'duracao'      => $e->duracao,
+        ],
+]);
     }
 
     public function store(Request $request)
@@ -70,21 +69,25 @@ class CalendarioController extends Controller
         $validated = $request->validate([
             'titulo'       => ['required', 'string', 'max:255'],
             'inicio'       => ['required', 'date'],
-            'fim'          => ['nullable', 'date', 'after_or_equal:inicio'],
+            'fim'          => ['nullable', 'date'],
             'duracao'      => ['nullable', 'integer', 'min:1'],
             'entidade_id'  => ['nullable', 'exists:entidades,id'],
             'tipo_id'      => ['nullable', 'exists:calendario_tipos,id'],
             'acao_id'      => ['nullable', 'exists:calendario_acoes,id'],
             'descricao'    => ['nullable', 'string'],
             'partilha'     => ['boolean'],
-            'conhecimento' => ['boolean'],
             'estado'       => ['required', 'in:pendente,concluido,cancelado'],
         ]);
 
         $validated['user_id'] = auth()->id();
+
+        // Garante que fim é sempre posterior ao início
+        if (!empty($validated['fim']) && $validated['fim'] <= $validated['inicio']) {
+            $validated['fim'] = null;
+        }
+
         CalendarioEvento::create($validated);
 
-        LogHelper::log('Calendário', "Criou evento: {$validated['titulo']}");
         return response()->json(['success' => true]);
     }
 
@@ -100,7 +103,6 @@ class CalendarioController extends Controller
             'acao_id'      => ['nullable', 'exists:calendario_acoes,id'],
             'descricao'    => ['nullable', 'string'],
             'partilha'     => ['boolean'],
-            'conhecimento' => ['boolean'],
             'estado'       => ['required', 'in:pendente,concluido,cancelado'],
         ]);
 

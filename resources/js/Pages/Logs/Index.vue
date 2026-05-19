@@ -32,8 +32,8 @@ const filtered = computed(() => {
                 <Input v-model="search" placeholder="Pesquisar logs..." class="pl-9" />
             </div>
 
-            <div class="rounded-lg border bg-card">
-                <table class="w-full text-sm">
+            <div class="w-full overflow-x-auto rounded-lg border bg-card">
+                <table class="w-full text-sm min-w-max">
                     <thead class="border-b bg-muted/50">
                         <tr>
                             <th class="px-4 py-3 text-left font-medium text-muted-foreground">Data</th>
@@ -41,8 +41,8 @@ const filtered = computed(() => {
                             <th class="px-4 py-3 text-left font-medium text-muted-foreground">Utilizador</th>
                             <th class="px-4 py-3 text-left font-medium text-muted-foreground">Menu</th>
                             <th class="px-4 py-3 text-left font-medium text-muted-foreground">Ação</th>
-                            <th class="px-4 py-3 text-left font-medium text-muted-foreground">IP</th>
                             <th class="px-4 py-3 text-left font-medium text-muted-foreground">Dispositivo</th>
+                            <th class="px-4 py-3 text-left font-medium text-muted-foreground">IP</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -57,8 +57,8 @@ const filtered = computed(() => {
                             <td class="px-4 py-3 font-medium">{{ log.utilizador }}</td>
                             <td class="px-4 py-3 text-muted-foreground">{{ log.menu }}</td>
                             <td class="px-4 py-3">{{ log.acao }}</td>
-                            <td class="px-4 py-3 font-mono text-xs text-muted-foreground">{{ log.ip }}</td>
                             <td class="px-4 py-3 text-xs text-muted-foreground max-w-xs truncate">{{ log.dispositivo }}</td>
+                            <td class="px-4 py-3 font-mono text-xs text-muted-foreground">{{ log.ip }}</td>
                         </tr>
                     </tbody>
                 </table>

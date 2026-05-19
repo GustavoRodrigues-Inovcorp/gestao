@@ -9,12 +9,13 @@ class EncomendaFornecedor extends Model
     protected $table = 'encomendas_fornecedor';
 
     protected $fillable = [
-        'numero', 'data', 'fornecedor_id',
+        'numero', 'data', 'validade', 'fornecedor_id',
         'encomenda_id', 'valor_total', 'estado',
     ];
 
     protected $casts = [
         'data'        => 'date',
+        'validade'    => 'date',
         'valor_total' => 'decimal:2',
     ];
 

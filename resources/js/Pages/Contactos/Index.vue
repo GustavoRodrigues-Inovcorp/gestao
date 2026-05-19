@@ -2,10 +2,11 @@
 import { ref, computed } from 'vue'
 import { useForm } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
+import { useMenuPermissions } from '@/composables/useMenuPermissions'
 import { Button } from '@/Components/ui/button'
 import { Input } from '@/Components/ui/input'
 import { Label } from '@/Components/ui/label'
-import { Badge } from '@/Components/ui/badge'
+import ViewSheet from '@/Components/ui/sheet/ViewSheet.vue'
 import {
     Dialog, DialogContent, DialogHeader,
     DialogTitle, DialogTrigger, DialogFooter,
@@ -24,10 +25,14 @@ const props = defineProps({
     proximoNumero: Number,
 })
 
+const { can } = useMenuPermissions('contactos')
+
 const showCreate = ref(false)
 const showEdit = ref(false)
 const editing = ref(null)
 const search = ref('')
+const showView = ref(false)
+const viewing = ref(null)
 
 const filtered = computed(() => {
     if (!search.value) return props.contactos
@@ -54,27 +59,53 @@ const createForm = useForm(defaultForm())
 const editForm = useForm(defaultForm())
 
 function openEdit(contacto) {
+    if (!can('update')) return
     editing.value = contacto
     Object.assign(editForm, defaultForm(contacto))
     showEdit.value = true
 }
 
 function submitCreate() {
+    if (!can('create')) return
     createForm.post('/contactos', {
         onSuccess: () => { showCreate.value = false; Object.assign(createForm, defaultForm()) }
     })
 }
 
 function submitEdit() {
+    if (!can('update')) return
     editForm.put(`/contactos/${editing.value.id}`, {
         onSuccess: () => { showEdit.value = false }
     })
 }
 
 function destroy(contacto) {
+    if (!can('delete')) return
     if (confirm(`Eliminar "${contacto.nome} ${contacto.apelido ?? ''}"?`)) {
         useForm({}).delete(`/contactos/${contacto.id}`)
     }
+}
+
+function openView(entidade) {
+    viewing.value = entidade
+    showView.value = true
+}
+
+function viewFields(c) {
+    if (!c) return []
+    return [
+        { label: 'Número', value: c.numero },
+        { label: 'Nome', value: c.nome },
+        { label: 'Apelido', value: c.apelido },
+        { label: 'Entidade', value: c.entidade },
+        { label: 'Função', value: c.funcao },
+        { label: 'Telefone', value: c.telefone },
+        { label: 'Telemóvel', value: c.telemovel },
+        { label: 'Email', value: c.email },
+        { label: 'RGPD', value: c.rgpd ? 'Sim' : 'Não' },
+        { label: 'Observações', value: c.observacoes },
+        { label: 'Estado', value: c.ativo ? 'Ativo' : 'Inativo' },
+    ]
 }
 </script>
 
@@ -92,7 +123,7 @@ function destroy(contacto) {
                     <Input v-model="search" placeholder="Pesquisar..." class="pl-9" />
                 </div>
 
-                <Dialog v-model:open="showCreate">
+                <Dialog v-if="can('create')" v-model:open="showCreate">
                     <DialogTrigger as-child>
                         <Button size="sm" class="gap-2">
                             <Plus class="w-4 h-4" /> Novo Contacto
@@ -188,8 +219,8 @@ function destroy(contacto) {
             </div>
 
             <!-- Tabela -->
-            <div class="rounded-lg border bg-card">
-                <table class="w-full text-sm">
+            <div class="w-full overflow-x-auto rounded-lg border bg-card">
+                <table class="w-full text-sm min-w-max">
                     <thead class="border-b bg-muted/50">
                         <tr>
                             <th class="px-4 py-3 text-left font-medium text-muted-foreground">Nome</th>
@@ -199,7 +230,6 @@ function destroy(contacto) {
                             <th class="px-4 py-3 text-left font-medium text-muted-foreground">Telefone</th>
                             <th class="px-4 py-3 text-left font-medium text-muted-foreground">Telemóvel</th>
                             <th class="px-4 py-3 text-left font-medium text-muted-foreground">Email</th>
-                            <th class="px-4 py-3 text-left font-medium text-muted-foreground">Estado</th>
                             <th class="px-4 py-3 text-right font-medium text-muted-foreground">Ações</th>
                         </tr>
                     </thead>
@@ -209,7 +239,7 @@ function destroy(contacto) {
                                 Nenhum contacto encontrado.
                             </td>
                         </tr>
-                        <tr v-for="c in filtered" :key="c.id" class="border-b last:border-0 hover:bg-muted/30">
+                        <tr v-for="c in filtered" :key="c.id" class="border-b last:border-0 hover:bg-muted/30" @click="openView(c)">
                             <td class="px-4 py-3 font-medium">{{ c.nome }}</td>
                             <td class="px-4 py-3">{{ c.apelido ?? '—' }}</td>
                             <td class="px-4 py-3">{{ c.funcao ?? '—' }}</td>
@@ -217,17 +247,12 @@ function destroy(contacto) {
                             <td class="px-4 py-3 text-muted-foreground">{{ c.telefone ?? '—' }}</td>
                             <td class="px-4 py-3 text-muted-foreground">{{ c.telemovel ?? '—' }}</td>
                             <td class="px-4 py-3 text-muted-foreground">{{ c.email ?? '—' }}</td>
-                            <td class="px-4 py-3">
-                                <Badge :variant="c.ativo ? 'default' : 'secondary'">
-                                    {{ c.ativo ? 'Ativo' : 'Inativo' }}
-                                </Badge>
-                            </td>
                             <td class="px-4 py-3 text-right">
-                                <div class="flex justify-end gap-2">
-                                    <Button size="icon" variant="ghost" @click="openEdit(c)">
+                                <div class="flex justify-end gap-2" @click.stop>
+                                    <Button v-if="can('update')" size="icon" variant="ghost" @click="openEdit(c)">
                                         <Pencil class="w-4 h-4" />
                                     </Button>
-                                    <Button size="icon" variant="ghost" class="text-destructive hover:text-destructive" @click="destroy(c)">
+                                    <Button v-if="can('delete')" size="icon" variant="ghost" class="text-destructive hover:text-destructive" @click="destroy(c)">
                                         <Trash2 class="w-4 h-4" />
                                     </Button>
                                 </div>
@@ -239,7 +264,7 @@ function destroy(contacto) {
         </div>
 
         <!-- Dialog Editar -->
-        <Dialog v-model:open="showEdit">
+        <Dialog v-if="can('update')" v-model:open="showEdit">
             <DialogContent class="max-w-lg max-h-[85vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>Editar Contacto — Nº {{ editing?.numero }}</DialogTitle>
@@ -325,5 +350,15 @@ function destroy(contacto) {
                 </DialogFooter>
             </DialogContent>
         </Dialog>
+        <ViewSheet
+            :open="showView"
+            :title="'Contacto — ' + (viewing?.nome ?? '')"
+            :fields="viewFields(viewing)"
+            :can-edit="can('update')"
+            :can-delete="can('delete')"
+            @update:open="showView = $event"
+            @edit="() => { showView = false; openEdit(viewing) }"
+            @delete="() => { showView = false; destroy(viewing) }"
+        />
     </AppLayout>
 </template>

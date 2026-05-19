@@ -2,10 +2,13 @@
 import { ref, computed } from 'vue'
 import { useForm } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
+import { useMenuPermissions } from '@/composables/useMenuPermissions'
 import { Button } from '@/Components/ui/button'
 import { Input } from '@/Components/ui/input'
 import { Label } from '@/Components/ui/label'
 import { Badge } from '@/Components/ui/badge'
+import ViewSheet from '@/Components/ui/sheet/ViewSheet.vue'
+
 import {
     Dialog, DialogContent, DialogHeader,
     DialogTitle, DialogTrigger, DialogFooter,
@@ -26,10 +29,14 @@ const props = defineProps({
     proximoNumero: Number,
 })
 
+const { can } = useMenuPermissions('ordens_trabalho')
+
 const showCreate = ref(false)
 const showEdit = ref(false)
 const editing = ref(null)
 const search = ref('')
+const showView = ref(false)
+const viewing = ref(null)
 
 const filtered = computed(() => {
     if (!search.value) return props.ordens
@@ -52,7 +59,7 @@ function defaultForm(overrides = {}) {
     return {
         entidade_id: null,
         contacto_id: null,
-        data: new Date().toISOString().split('T')[0],
+        data_ordem: new Date().toISOString().split('T')[0],
         descricao: '',
         observacoes: '',
         user_id: null,
@@ -74,8 +81,14 @@ function defaultLinha() {
     }
 }
 
-const createForm = useForm(defaultForm())
-const editForm = useForm(defaultForm())
+const createForm = useForm(defaultForm()).transform(data => ({
+    ...data,
+    data: data.data_ordem,
+}))
+const editForm = useForm(defaultForm()).transform(data => ({
+    ...data,
+    data: data.data_ordem,
+}))
 
 function addLinha(form) {
     form.linhas.push(defaultLinha())
@@ -102,6 +115,7 @@ function totalForm(form) {
 }
 
 function openEdit(ordem) {
+    if (!can('update')) return
     editing.value = ordem
     fetch(`/ordens-trabalho/${ordem.id}/linhas`)
         .then(r => r.json())
@@ -109,7 +123,7 @@ function openEdit(ordem) {
             Object.assign(editForm, defaultForm({
                 entidade_id: ordem.entidade_id,
                 contacto_id: ordem.contacto_id,
-                data: ordem.data_raw,
+                data_ordem: ordem.data_raw,
                 descricao: ordem.descricao,
                 observacoes: ordem.observacoes,
                 user_id: ordem.user_id,
@@ -123,18 +137,21 @@ function openEdit(ordem) {
 }
 
 function submitCreate() {
+    if (!can('create')) return
     createForm.post('/ordens-trabalho', {
         onSuccess: () => { showCreate.value = false; Object.assign(createForm, defaultForm()) }
     })
 }
 
 function submitEdit() {
+    if (!can('update')) return
     editForm.put(`/ordens-trabalho/${editing.value.id}`, {
         onSuccess: () => { showEdit.value = false }
     })
 }
 
 function destroy(ordem) {
+    if (!can('delete')) return
     if (confirm(`Eliminar Ordem de Trabalho Nº ${ordem.numero}?`)) {
         useForm({}).delete(`/ordens-trabalho/${ordem.id}`)
     }
@@ -149,6 +166,28 @@ const estadoConfig = {
     em_progresso: { label: 'Em Progresso', variant: 'default' },
     concluida:    { label: 'Concluída',    variant: 'secondary' },
     cancelada:    { label: 'Cancelada',    variant: 'destructive' },
+}
+
+function openView(entidade) {
+    viewing.value = entidade
+    showView.value = true
+}
+
+function viewFields(o) {
+    if (!o) return []
+    return [
+        { label: 'Número', value: String(o.numero).padStart(5, '0') },
+        { label: 'Data', value: o.data },
+        { label: 'Cliente', value: o.entidade },
+        { label: 'Contacto', value: o.contacto },
+        { label: 'Responsável', value: o.user },
+        { label: 'Data Prevista', value: o.data_prevista },
+        { label: 'Data Conclusão', value: o.data_conclusao },
+        { label: 'Descrição', value: o.descricao },
+        { label: 'Observações', value: o.observacoes },
+        { label: 'Total', value: o.total, type: 'currency' },
+        { label: 'Estado', value: o.estado },
+    ]
 }
 </script>
 
@@ -165,7 +204,7 @@ const estadoConfig = {
                     <Input v-model="search" placeholder="Pesquisar..." class="pl-9" />
                 </div>
 
-                <Dialog v-model:open="showCreate">
+                <Dialog v-if="can('create')" v-model:open="showCreate">
                     <DialogTrigger as-child>
                         <Button size="sm" class="gap-2">
                             <Plus class="w-4 h-4" /> Nova Ordem
@@ -208,7 +247,7 @@ const estadoConfig = {
                                 </div>
                                 <div class="space-y-1">
                                     <Label>Data *</Label>
-                                    <Input v-model="createForm.data" type="date" />
+                                    <Input v-model="createForm.data_ordem" type="date" />
                                 </div>
                             </div>
                             <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px;">
@@ -328,8 +367,8 @@ const estadoConfig = {
             </div>
 
             <!-- Tabela -->
-            <div class="rounded-lg border bg-card">
-                <table class="w-full text-sm">
+            <div class="w-full overflow-x-auto rounded-lg border bg-card">
+                <table class="w-full text-sm min-w-max">
                     <thead class="border-b bg-muted/50">
                         <tr>
                             <th class="px-4 py-3 text-left font-medium text-muted-foreground">Nº</th>
@@ -349,7 +388,7 @@ const estadoConfig = {
                                 Nenhuma ordem de trabalho encontrada.
                             </td>
                         </tr>
-                        <tr v-for="o in filtered" :key="o.id" class="border-b last:border-0 hover:bg-muted/30">
+                        <tr v-for="o in filtered" :key="o.id" class="border-b last:border-0 hover:bg-muted/30" @click="openView(o)">
                             <td class="px-4 py-3 font-mono">{{ String(o.numero).padStart(5, '0') }}</td>
                             <td class="px-4 py-3 text-muted-foreground">{{ o.data }}</td>
                             <td class="px-4 py-3 font-medium">{{ o.entidade }}</td>
@@ -363,11 +402,11 @@ const estadoConfig = {
                                 </Badge>
                             </td>
                             <td class="px-4 py-3 text-right">
-                                <div class="flex justify-end gap-1">
-                                    <Button size="icon" variant="ghost" @click="openEdit(o)">
+                                <div class="flex justify-end gap-1" @click.stop>
+                                    <Button v-if="can('update')" size="icon" variant="ghost" @click="openEdit(o)">
                                         <Pencil class="w-4 h-4" />
                                     </Button>
-                                    <Button size="icon" variant="ghost" class="text-destructive hover:text-destructive" @click="destroy(o)">
+                                    <Button v-if="can('delete')" size="icon" variant="ghost" class="text-destructive hover:text-destructive" @click="destroy(o)">
                                         <Trash2 class="w-4 h-4" />
                                     </Button>
                                 </div>
@@ -379,7 +418,7 @@ const estadoConfig = {
         </div>
 
         <!-- Dialog Editar -->
-        <Dialog v-model:open="showEdit">
+        <Dialog v-if="can('update')" v-model:open="showEdit">
             <DialogContent class="max-w-4xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>Editar Ordem de Trabalho — Nº {{ editing?.numero }}</DialogTitle>
@@ -415,7 +454,7 @@ const estadoConfig = {
                         </div>
                         <div class="space-y-1">
                             <Label>Data *</Label>
-                            <Input v-model="editForm.data" type="date" />
+                            <Input v-model="editForm.data_ordem" type="date" />
                         </div>
                     </div>
                     <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px;">
@@ -532,5 +571,15 @@ const estadoConfig = {
                 </DialogFooter>
             </DialogContent>
         </Dialog>
+        <ViewSheet
+            :open="showView"
+            :title="'Ordem de Trabalho — ' + (viewing?.numero ?? '')"
+            :fields="viewFields(viewing)"
+            :can-edit="can('update')"
+            :can-delete="can('delete')"
+            @update:open="showView = $event"
+            @edit="() => { showView = false; openEdit(viewing) }"
+            @delete="() => { showView = false; destroy(viewing) }"
+        />
     </AppLayout>
 </template>

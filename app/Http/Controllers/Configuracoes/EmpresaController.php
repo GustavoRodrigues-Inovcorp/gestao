@@ -35,6 +35,9 @@ class EmpresaController extends Controller
             }
             $validated['logotipo'] = $request->file('logotipo')
                 ->store('empresa', 'local');
+        } else {
+            // Se nenhum ficheiro foi enviado, não incluir a chave na validação
+            unset($validated['logotipo']);
         }
 
         $empresa->fill($validated)->save();

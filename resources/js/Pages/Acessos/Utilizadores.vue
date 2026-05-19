@@ -2,10 +2,13 @@
 import { ref } from 'vue'
 import { useForm } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
+import { useMenuPermissions } from '@/composables/useMenuPermissions'
 import { Button } from '@/Components/ui/button'
 import { Input } from '@/Components/ui/input'
 import { Label } from '@/Components/ui/label'
 import { Badge } from '@/Components/ui/badge'
+import ViewSheet from '@/Components/ui/sheet/ViewSheet.vue'
+
 import {
     Dialog, DialogContent, DialogHeader,
     DialogTitle, DialogTrigger, DialogFooter,
@@ -21,9 +24,13 @@ const props = defineProps({
     roles: Array,
 })
 
+const { can } = useMenuPermissions('utilizadores')
+
 const showCreate = ref(false)
 const showEdit = ref(false)
 const editing = ref(null)
+const showView = ref(false)
+const viewing = ref(null)
 
 const createForm = useForm({
     name: '', email: '', phone: '',
@@ -36,6 +43,7 @@ const editForm = useForm({
 })
 
 function openEdit(user) {
+    if (!can('update')) return
     editing.value = user
     editForm.name = user.name
     editForm.email = user.email
@@ -46,21 +54,40 @@ function openEdit(user) {
 }
 
 function submitCreate() {
+    if (!can('create')) return
     createForm.post('/acessos/utilizadores', {
         onSuccess: () => { showCreate.value = false; createForm.reset() }
     })
 }
 
 function submitEdit() {
+    if (!can('update')) return
     editForm.put(`/acessos/utilizadores/${editing.value.id}`, {
         onSuccess: () => { showEdit.value = false }
     })
 }
 
 function destroy(user) {
+    if (!can('delete')) return
     if (confirm(`Eliminar utilizador "${user.name}"?`)) {
         useForm({}).delete(`/acessos/utilizadores/${user.id}`)
     }
+}
+
+function openView(entidade) {
+    viewing.value = entidade
+    showView.value = true
+}
+
+function viewFields(u) {
+    if (!u) return []
+    return [
+        { label: 'Nome', value: u.name },
+        { label: 'Email', value: u.email },
+        { label: 'Telemóvel', value: u.phone },
+        { label: 'Grupo de Permissões', value: u.role },
+        { label: 'Estado', value: u.active ? 'Ativo' : 'Inativo' },
+    ]
 }
 </script>
 
@@ -71,7 +98,7 @@ function destroy(user) {
         </template>
 
         <div class="space-y-4">
-            <div class="flex justify-end">
+            <div v-if="can('create')" class="flex justify-end">
                 <Dialog v-model:open="showCreate">
                     <DialogTrigger as-child>
                         <Button size="sm" class="gap-2">
@@ -127,8 +154,8 @@ function destroy(user) {
                 </Dialog>
             </div>
 
-            <div class="rounded-lg border bg-card">
-                <table class="w-full text-sm">
+            <div class="w-full overflow-x-auto rounded-lg border bg-card">
+                <table class="w-full text-sm min-w-max">
                     <thead class="border-b bg-muted/50">
                         <tr>
                             <th class="px-4 py-3 text-left font-medium text-muted-foreground">Nome</th>
@@ -145,7 +172,7 @@ function destroy(user) {
                                 Nenhum utilizador registado.
                             </td>
                         </tr>
-                        <tr v-for="user in utilizadores" :key="user.id" class="border-b last:border-0 hover:bg-muted/30">
+                        <tr v-for="user in utilizadores" :key="user.id" class="border-b last:border-0 hover:bg-muted/30" @click="openView(user)">
                             <td class="px-4 py-3 font-medium">{{ user.name }}</td>
                             <td class="px-4 py-3 text-muted-foreground">{{ user.email }}</td>
                             <td class="px-4 py-3 text-muted-foreground">{{ user.phone ?? '—' }}</td>
@@ -158,11 +185,11 @@ function destroy(user) {
                                 </Badge>
                             </td>
                             <td class="px-4 py-3 text-right">
-                                <div class="flex justify-end gap-2">
-                                    <Button size="icon" variant="ghost" @click="openEdit(user)">
+                                <div class="flex justify-end gap-2" @click.stop>
+                                    <Button v-if="can('update')" size="icon" variant="ghost" @click="openEdit(user)">
                                         <Pencil class="w-4 h-4" />
                                     </Button>
-                                    <Button size="icon" variant="ghost" class="text-destructive hover:text-destructive" @click="destroy(user)">
+                                    <Button v-if="can('delete')" size="icon" variant="ghost" class="text-destructive hover:text-destructive" @click="destroy(user)">
                                         <Trash2 class="w-4 h-4" />
                                     </Button>
                                 </div>
@@ -174,7 +201,7 @@ function destroy(user) {
         </div>
 
         <!-- Dialog Editar -->
-        <Dialog v-model:open="showEdit">
+        <Dialog v-if="can('update')" v-model:open="showEdit">
             <DialogContent class="max-w-lg">
                 <DialogHeader>
                     <DialogTitle>Editar Utilizador</DialogTitle>
@@ -215,5 +242,15 @@ function destroy(user) {
                 </DialogFooter>
             </DialogContent>
         </Dialog>
+        <ViewSheet
+            :open="showView"
+            :title="'Utilizador — ' + (viewing?.name ?? '')"
+            :fields="viewFields(viewing)"
+            :can-edit="can('update')"
+            :can-delete="can('delete')"
+            @update:open="showView = $event"
+            @edit="() => { showView = false; openEdit(viewing) }"
+            @delete="() => { showView = false; destroy(viewing) }"
+        />
     </AppLayout>
 </template>

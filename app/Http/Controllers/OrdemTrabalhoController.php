@@ -3,6 +3,7 @@ namespace App\Http\Controllers;
 
 use App\Helpers\LogHelper;
 use App\Models\OrdemTrabalho;
+use App\Models\OrdemTrabalhoLinha;
 use App\Models\Entidade;
 use App\Models\Contacto;
 use App\Models\Artigo;
@@ -118,26 +119,31 @@ class OrdemTrabalhoController extends Controller
         $ordemTrabalho->update([
             'data'           => $validated['data'],
             'entidade_id'    => $validated['entidade_id'],
-            'contacto_id'    => $validated['contacto_id'] ?? null,
+            'contacto_id'    => isset($validated['contacto_id']) && $validated['contacto_id'] !== 'sem-contacto'
+                                ? $validated['contacto_id'] : null,
             'descricao'      => $validated['descricao'] ?? null,
             'observacoes'    => $validated['observacoes'] ?? null,
             'user_id'        => $validated['user_id'] ?? $ordemTrabalho->user_id,
             'estado'         => $validated['estado'],
-            'data_prevista'  => $validated['data_prevista'] ?? null,
-            'data_conclusao' => $validated['data_conclusao'] ?? null,
+            'data_prevista'  => !empty($validated['data_prevista']) ? $validated['data_prevista'] : null,
+            'data_conclusao' => !empty($validated['data_conclusao']) ? $validated['data_conclusao'] : null,
         ]);
 
-        $ordemTrabalho->linhas()->delete();
+        // Apaga linhas antigas
+        OrdemTrabalhoLinha::where('ordem_trabalho_id', $ordemTrabalho->id)->delete();
 
+        // Cria linhas novas com ID explícito
         foreach ($validated['linhas'] ?? [] as $linha) {
-            $subtotal = $linha['quantidade'] * $linha['preco'];
-            $ordemTrabalho->linhas()->create([
-                'artigo_id'  => $linha['artigo_id'] ?? null,
-                'descricao'  => $linha['descricao'],
-                'quantidade' => $linha['quantidade'],
-                'unidade'    => $linha['unidade'] ?? null,
-                'preco'      => $linha['preco'],
-                'subtotal'   => $subtotal,
+            OrdemTrabalhoLinha::insert([
+                'ordem_trabalho_id' => $ordemTrabalho->id,
+                'artigo_id'         => $linha['artigo_id'] ?? null,
+                'descricao'         => $linha['descricao'],
+                'quantidade'        => $linha['quantidade'],
+                'unidade'           => $linha['unidade'] ?? null,
+                'preco'             => $linha['preco'],
+                'subtotal'          => $linha['quantidade'] * $linha['preco'],
+                'created_at'        => now(),
+                'updated_at'        => now(),
             ]);
         }
 

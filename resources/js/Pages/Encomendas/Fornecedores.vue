@@ -1,11 +1,14 @@
 <script setup>
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
+import { usePage } from '@inertiajs/vue3'
 import { useForm } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
 import { Button } from '@/Components/ui/button'
 import { Input } from '@/Components/ui/input'
 import { Label } from '@/Components/ui/label'
 import { Badge } from '@/Components/ui/badge'
+import ViewSheet from '@/Components/ui/sheet/ViewSheet.vue'
+
 import {
     Dialog, DialogContent, DialogHeader,
     DialogTitle, DialogTrigger, DialogFooter,
@@ -23,14 +26,24 @@ const props = defineProps({
     proximoNumero: Number,
 })
 
+const page = usePage()
+const permissions = computed(() => page.props.auth?.permissions ?? [])
+
+function can(action) {
+    return permissions.value.includes(`encomendas_fornecedores.${action}`)
+}
+
 const showCreate = ref(false)
 const showEdit = ref(false)
 const editing = ref(null)
+const showView = ref(false)
+const viewing = ref(null)
 
 function defaultForm(overrides = {}) {
     return {
         fornecedor_id: null,
         estado: 'rascunho',
+        validade: null,
         linhas: [],
         ...overrides,
     }
@@ -73,6 +86,7 @@ function totalForm(form) {
 }
 
 function openEdit(encomenda) {
+    if (!can('update')) return
     editing.value = encomenda
     fetch(`/encomendas-fornecedor/${encomenda.id}/linhas`)
         .then(r => r.json())
@@ -87,18 +101,21 @@ function openEdit(encomenda) {
 }
 
 function submitCreate() {
+    if (!can('create')) return
     createForm.post('/encomendas-fornecedor', {
         onSuccess: () => { showCreate.value = false; Object.assign(createForm, defaultForm()) }
     })
 }
 
 function submitEdit() {
+    if (!can('update')) return
     editForm.put(`/encomendas-fornecedor/${editing.value.id}`, {
         onSuccess: () => { showEdit.value = false }
     })
 }
 
 function destroy(encomenda) {
+    if (!can('delete')) return
     if (confirm(`Eliminar encomenda Nº ${encomenda.numero}?`)) {
         useForm({}).delete(`/encomendas-fornecedor/${encomenda.id}`)
     }
@@ -109,6 +126,22 @@ function formatPrice(val) {
 }
 
 const estadoBadge = { rascunho: 'secondary', fechado: 'default' }
+
+function openView(entidade) {
+    viewing.value = entidade
+    showView.value = true
+}
+
+function viewFields(e) {
+    if (!e) return []
+    return [
+        { label: 'Número', value: String(e.numero).padStart(5, '0') },
+        { label: 'Data', value: e.data },
+        { label: 'Fornecedor', value: e.fornecedor },
+        { label: 'Valor Total', value: e.valor_total, type: 'currency' },
+        { label: 'Estado', value: e.estado },
+    ]
+}
 </script>
 
 <template>
@@ -119,7 +152,7 @@ const estadoBadge = { rascunho: 'secondary', fechado: 'default' }
 
         <div class="space-y-4">
             <!-- Ação principal: criar uma encomenda de fornecedor. -->
-            <div class="flex justify-end">
+            <div v-if="can('create')" class="flex justify-end">
                 <Dialog v-model:open="showCreate">
                     <DialogTrigger as-child>
                         <Button size="sm" class="gap-2">
@@ -131,7 +164,16 @@ const estadoBadge = { rascunho: 'secondary', fechado: 'default' }
                             <DialogTitle>Nova Encomenda Fornecedor — Nº {{ proximoNumero }}</DialogTitle>
                         </DialogHeader>
                         <div class="space-y-4 py-2">
-                            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 16px;">
+                            <div style="display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 16px;">
+                                <div class="space-y-1">
+                                    <Label>Validade</Label>
+                                    <input
+                                        v-model="createForm.validade"
+                                        type="date"
+                                        class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                                        @mousedown.stop
+                                    />
+                                </div>
                                 <div class="space-y-1">
                                     <Label>Fornecedor *</Label>
                                     <Select v-model="createForm.fornecedor_id">
@@ -235,12 +277,13 @@ const estadoBadge = { rascunho: 'secondary', fechado: 'default' }
             </div>
 
             <!-- Tabela das encomendas de fornecedor. -->
-            <div class="rounded-lg border bg-card">
-                <table class="w-full text-sm">
+            <div class="w-full overflow-x-auto rounded-lg border bg-card">
+                <table class="w-full text-sm min-w-max">
                     <thead class="border-b bg-muted/50">
                         <tr>
-                            <th class="px-4 py-3 text-left font-medium text-muted-foreground">Nº</th>
                             <th class="px-4 py-3 text-left font-medium text-muted-foreground">Data</th>
+                            <th class="px-4 py-3 text-left font-medium text-muted-foreground">Nº</th>
+                            <th class="px-4 py-3 text-left font-medium text-muted-foreground">Validade</th>
                             <th class="px-4 py-3 text-left font-medium text-muted-foreground">Fornecedor</th>
                             <th class="px-4 py-3 text-right font-medium text-muted-foreground">Valor Total</th>
                             <th class="px-4 py-3 text-left font-medium text-muted-foreground">Estado</th>
@@ -253,23 +296,24 @@ const estadoBadge = { rascunho: 'secondary', fechado: 'default' }
                                 Nenhuma encomenda registada.
                             </td>
                         </tr>
-                        <tr v-for="e in encomendas" :key="e.id" class="border-b last:border-0 hover:bg-muted/30">
-                            <td class="px-4 py-3 font-mono">{{ String(e.numero).padStart(5, '0') }}</td>
+                        <tr v-for="e in encomendas" :key="e.id" class="border-b last:border-0 hover:bg-muted/30" @click="openView(e)">
                             <td class="px-4 py-3 text-muted-foreground">{{ e.data ?? '—' }}</td>
+                            <td class="px-4 py-3 font-mono">{{ String(e.numero).padStart(5, '0') }}</td>
+                            <td class="px-4 py-3 font-medium">{{ e.validade ?? '—' }}</td>
                             <td class="px-4 py-3 font-medium">{{ e.fornecedor }}</td>
                             <td class="px-4 py-3 text-right font-medium">{{ formatPrice(e.valor_total) }}</td>
                             <td class="px-4 py-3">
                                 <Badge :variant="estadoBadge[e.estado]">{{ e.estado }}</Badge>
                             </td>
                             <td class="px-4 py-3 text-right">
-                                <div class="flex justify-end gap-1">
+                                <div class="flex justify-end gap-1" @click.stop>
                                     <Button size="icon" variant="ghost" as="a" :href="`/encomendas-fornecedor/${e.id}/pdf`" target="_blank" title="Download PDF">
                                         <FileDown class="w-4 h-4" />
                                     </Button>
-                                    <Button size="icon" variant="ghost" @click="openEdit(e)">
+                                    <Button v-if="can('update')" size="icon" variant="ghost" @click="openEdit(e)">
                                         <Pencil class="w-4 h-4" />
                                     </Button>
-                                    <Button size="icon" variant="ghost" class="text-destructive hover:text-destructive" @click="destroy(e)">
+                                    <Button v-if="can('delete')" size="icon" variant="ghost" class="text-destructive hover:text-destructive" @click="destroy(e)">
                                         <Trash2 class="w-4 h-4" />
                                     </Button>
                                 </div>
@@ -281,13 +325,22 @@ const estadoBadge = { rascunho: 'secondary', fechado: 'default' }
         </div>
 
         <!-- Dialog Editar -->
-        <Dialog v-model:open="showEdit">
+        <Dialog v-if="can('update')" v-model:open="showEdit">
             <DialogContent class="max-w-4xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>Editar Encomenda Fornecedor — Nº {{ editing?.numero }}</DialogTitle>
                 </DialogHeader>
                 <div class="space-y-4 py-2">
-                    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 16px;">
+                    <div style="display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 16px;">
+                        <div class="space-y-1">
+                            <Label>Validade</Label>
+                            <input
+                                v-model="editForm.validade"
+                                type="date"
+                                class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                                @mousedown.stop
+                            />
+                        </div>
                         <div class="space-y-1">
                             <Label>Fornecedor *</Label>
                             <Select v-model="editForm.fornecedor_id">
@@ -380,5 +433,15 @@ const estadoBadge = { rascunho: 'secondary', fechado: 'default' }
                 </DialogFooter>
             </DialogContent>
         </Dialog>
+        <ViewSheet
+            :open="showView"
+            :title="'Encomenda — ' + (viewing?.numero ?? '')"
+            :fields="viewFields(viewing)"
+            :can-edit="can('update')"
+            :can-delete="can('delete')"
+            @update:open="showView = $event"
+            @edit="() => { showView = false; openEdit(viewing) }"
+            @delete="() => { showView = false; destroy(viewing) }"
+        />
     </AppLayout>
 </template>

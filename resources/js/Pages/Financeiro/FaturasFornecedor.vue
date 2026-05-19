@@ -2,10 +2,13 @@
 import { ref, computed } from 'vue'
 import { useForm } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
+import { useMenuPermissions } from '@/composables/useMenuPermissions'
 import { Button } from '@/Components/ui/button'
 import { Input } from '@/Components/ui/input'
 import { Label } from '@/Components/ui/label'
 import { Badge } from '@/Components/ui/badge'
+import ViewSheet from '@/Components/ui/sheet/ViewSheet.vue'
+
 import {
     Dialog, DialogContent, DialogHeader,
     DialogTitle, DialogTrigger, DialogFooter,
@@ -23,11 +26,15 @@ const props = defineProps({
     proximoNumero: Number,
 })
 
+const { can } = useMenuPermissions('financeiro')
+
 const showCreate = ref(false)
 const showEdit = ref(false)
 const showComprovativo = ref(false)
 const editing = ref(null)
 const faturaParaComprovativo = ref(null)
+const showView = ref(false)
+const viewing = ref(null)
 
 function defaultForm(overrides = {}) {
     return {
@@ -37,6 +44,7 @@ function defaultForm(overrides = {}) {
         encomenda_fornecedor_id: null,
         valor_total: '',
         documento: null,
+        comprovativo: null,
         estado: 'pendente',
         ...overrides,
     }
@@ -56,23 +64,25 @@ const encomendasFiltradas = computed(() => {
 function openEdit(fatura) {
     editing.value = fatura
     Object.assign(editForm, defaultForm({
-        data_fatura: fatura.data_fatura_raw ?? fatura.data_fatura,
-        data_vencimento: fatura.data_vencimento_raw ?? fatura.data_vencimento,
-        fornecedor_id: fatura.fornecedor_id,
+        data_fatura:             fatura.data_fatura_raw ?? '',
+        data_vencimento:         fatura.data_vencimento_raw ?? '',
+        fornecedor_id:           fatura.fornecedor_id,
         encomenda_fornecedor_id: fatura.encomenda_fornecedor_id,
-        valor_total: fatura.valor_total,
-        estado: fatura.estado,
+        valor_total:             fatura.valor_total,
+        estado:                  fatura.estado,
     }))
     showEdit.value = true
 }
 
 function openComprovativo(fatura) {
+    if (!can('update')) return
     faturaParaComprovativo.value = fatura
     comprativoForm.reset()
     showComprovativo.value = true
 }
 
 function submitCreate() {
+    if (!can('create')) return
     createForm.post('/financeiro/faturas-fornecedor', {
         forceFormData: true,
         onSuccess: () => { showCreate.value = false; Object.assign(createForm, defaultForm()) }
@@ -80,13 +90,16 @@ function submitCreate() {
 }
 
 function submitEdit() {
-    editForm.post(`/financeiro/faturas-fornecedor/${editing.value.id}`, {
-        forceFormData: true,
-        onSuccess: () => { showEdit.value = false }
-    })
+    editForm
+        .transform(data => ({ ...data, _method: 'PUT' }))
+        .post(`/financeiro/faturas-fornecedor/${editing.value.id}`, {
+            forceFormData: true,
+            onSuccess: () => { showEdit.value = false }
+        })
 }
 
 function submitComprovativo() {
+    if (!can('update')) return
     comprativoForm.post(`/financeiro/faturas-fornecedor/${faturaParaComprovativo.value.id}/comprovativo`, {
         forceFormData: true,
         onSuccess: () => { showComprovativo.value = false }
@@ -94,6 +107,7 @@ function submitComprovativo() {
 }
 
 function destroy(fatura) {
+    if (!can('delete')) return
     if (confirm(`Eliminar fatura Nº ${fatura.numero}?`)) {
         useForm({}).delete(`/financeiro/faturas-fornecedor/${fatura.id}`)
     }
@@ -105,6 +119,24 @@ function formatPrice(val) {
 
 const estadoBadge = { pendente: 'secondary', paga: 'default' }
 const estadoLabel = { pendente: 'Pendente', paga: 'Paga' }
+
+function openView(entidade) {
+    viewing.value = entidade
+    showView.value = true
+}
+
+function viewFields(f) {
+    if (!f) return []
+    return [
+        { label: 'Número', value: String(f.numero).padStart(5, '0') },
+        { label: 'Data Fatura', value: f.data_fatura },
+        { label: 'Data Vencimento', value: f.data_vencimento },
+        { label: 'Fornecedor', value: f.fornecedor },
+        { label: 'Encomenda', value: f.encomenda_numero ? 'Nº ' + String(f.encomenda_numero).padStart(5, '0') : null },
+        { label: 'Valor Total', value: f.valor_total, type: 'currency' },
+        { label: 'Estado', value: f.estado === 'pendente' ? 'Pendente de Pagamento' : 'Paga' },
+    ]
+}
 </script>
 
 <template>
@@ -114,7 +146,7 @@ const estadoLabel = { pendente: 'Pendente', paga: 'Paga' }
         </template>
 
         <div class="space-y-4">
-            <div class="flex justify-end">
+            <div v-if="can('create')" class="flex justify-end">
                 <Dialog v-model:open="showCreate">
                     <DialogTrigger as-child>
                         <Button size="sm" class="gap-2">
@@ -129,14 +161,24 @@ const estadoLabel = { pendente: 'Pendente', paga: 'Paga' }
                             <div class="grid grid-cols-2 gap-4">
                                 <div class="space-y-1">
                                     <Label>Data Fatura *</Label>
-                                    <Input v-model="createForm.data_fatura" type="date" />
-                                    <p v-if="createForm.errors.data_fatura" class="text-xs text-destructive">{{ createForm.errors.data_fatura }}</p>
+                                    <input
+                                        v-model="editForm.data_fatura"
+                                        type="date"
+                                        class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                                        @mousedown.stop
+                                    />
                                 </div>
                                 <div class="space-y-1">
                                     <Label>Data Vencimento</Label>
-                                    <Input v-model="createForm.data_vencimento" type="date" />
+                                    <input
+                                        v-model="editForm.data_vencimento"
+                                        type="date"
+                                        class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                                        @mousedown.stop
+                                    />
                                 </div>
                             </div>
+
                             <div class="space-y-1">
                                 <Label>Fornecedor *</Label>
                                 <Select v-model="createForm.fornecedor_id">
@@ -174,6 +216,10 @@ const estadoLabel = { pendente: 'Pendente', paga: 'Paga' }
                                 <Input type="file" @change="e => createForm.documento = e.target.files[0]" />
                             </div>
                             <div class="space-y-1">
+                                <Label>Comprovativo de Pagamento</Label>
+                                <Input type="file" @change="e => createForm.comprovativo = e.target.files[0]" />
+                            </div>
+                            <div class="space-y-1">
                                 <Label>Estado</Label>
                                 <Select v-model="createForm.estado">
                                     <SelectTrigger><SelectValue /></SelectTrigger>
@@ -192,12 +238,12 @@ const estadoLabel = { pendente: 'Pendente', paga: 'Paga' }
             </div>
 
             <!-- Tabela -->
-            <div class="rounded-lg border bg-card">
-                <table class="w-full text-sm">
+            <div class="w-full overflow-x-auto rounded-lg border bg-card">
+                <table class="w-full text-sm min-w-max">
                     <thead class="border-b bg-muted/50">
                         <tr>
-                            <th class="px-4 py-3 text-left font-medium text-muted-foreground">Nº</th>
                             <th class="px-4 py-3 text-left font-medium text-muted-foreground">Data</th>
+                            <th class="px-4 py-3 text-left font-medium text-muted-foreground">Nº</th>
                             <th class="px-4 py-3 text-left font-medium text-muted-foreground">Fornecedor</th>
                             <th class="px-4 py-3 text-left font-medium text-muted-foreground">Encomenda</th>
                             <th class="px-4 py-3 text-left font-medium text-muted-foreground">Documento</th>
@@ -212,9 +258,9 @@ const estadoLabel = { pendente: 'Pendente', paga: 'Paga' }
                                 Nenhuma fatura registada.
                             </td>
                         </tr>
-                        <tr v-for="f in faturas" :key="f.id" class="border-b last:border-0 hover:bg-muted/30">
-                            <td class="px-4 py-3 font-mono">{{ String(f.numero).padStart(5, '0') }}</td>
+                        <tr v-for="f in faturas" :key="f.id" class="border-b last:border-0 hover:bg-muted/30" @click="openView(f)">
                             <td class="px-4 py-3 text-muted-foreground">{{ f.data_fatura }}</td>
+                            <td class="px-4 py-3 font-mono">{{ String(f.numero).padStart(5, '0') }}</td>
                             <td class="px-4 py-3 font-medium">{{ f.fornecedor }}</td>
                             <td class="px-4 py-3 text-muted-foreground">
                                 {{ f.encomenda_numero ? 'Nº ' + String(f.encomenda_numero).padStart(5, '0') : '—' }}
@@ -230,19 +276,19 @@ const estadoLabel = { pendente: 'Pendente', paga: 'Paga' }
                                 <Badge :variant="estadoBadge[f.estado]">{{ estadoLabel[f.estado] }}</Badge>
                             </td>
                             <td class="px-4 py-3 text-right">
-                                <div class="flex justify-end gap-1">
+                                <div class="flex justify-end gap-1" @click.stop>
                                     <Button
-                                        v-if="f.estado === 'paga'"
+                                        v-if="can('update') && f.estado === 'paga'"
                                         size="icon" variant="ghost"
                                         @click="openComprovativo(f)"
                                         title="Enviar Comprovativo"
                                     >
                                         <Send class="w-4 h-4" />
                                     </Button>
-                                    <Button size="icon" variant="ghost" @click="openEdit(f)">
+                                    <Button v-if="can('update')" size="icon" variant="ghost" @click="openEdit(f)">
                                         <Pencil class="w-4 h-4" />
                                     </Button>
-                                    <Button size="icon" variant="ghost" class="text-destructive hover:text-destructive" @click="destroy(f)">
+                                    <Button v-if="can('delete')" size="icon" variant="ghost" class="text-destructive hover:text-destructive" @click="destroy(f)">
                                         <Trash2 class="w-4 h-4" />
                                     </Button>
                                 </div>
@@ -254,7 +300,7 @@ const estadoLabel = { pendente: 'Pendente', paga: 'Paga' }
         </div>
 
         <!-- Dialog Editar -->
-        <Dialog v-model:open="showEdit">
+        <Dialog v-if="can('update')" v-model:open="showEdit">
             <DialogContent class="max-w-lg max-h-[85vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>Editar Fatura — Nº {{ editing?.numero }}</DialogTitle>
@@ -309,6 +355,14 @@ const estadoLabel = { pendente: 'Pendente', paga: 'Paga' }
                         </p>
                     </div>
                     <div class="space-y-1">
+                        <Label>Comprovativo (substituir)</Label>
+                        <Input type="file" @change="e => editForm.comprovativo = e.target.files[0]" />
+                        <p v-if="editing?.comprovativo" class="text-xs text-muted-foreground">
+                            Já tem comprovativo anexado.
+                            <a :href="editing.comprovativo" target="_blank" class="text-primary hover:underline">Ver atual</a>
+                        </p>
+                    </div>
+                    <div class="space-y-1">
                         <Label>Estado</Label>
                         <Select v-model="editForm.estado">
                             <SelectTrigger><SelectValue /></SelectTrigger>
@@ -326,7 +380,7 @@ const estadoLabel = { pendente: 'Pendente', paga: 'Paga' }
         </Dialog>
 
         <!-- Dialog Comprovativo -->
-        <Dialog v-model:open="showComprovativo">
+        <Dialog v-if="can('update')" v-model:open="showComprovativo">
             <DialogContent class="max-w-md">
                 <DialogHeader>
                     <DialogTitle>Enviar Comprovativo de Pagamento</DialogTitle>
@@ -352,5 +406,15 @@ const estadoLabel = { pendente: 'Pendente', paga: 'Paga' }
                 </DialogFooter>
             </DialogContent>
         </Dialog>
+        <ViewSheet
+            :open="showView"
+            :title="'Fatura — ' + (viewing?.numero ?? '')"
+            :fields="viewFields(viewing)"
+            :can-edit="can('update')"
+            :can-delete="can('delete')"
+            @update:open="showView = $event"
+            @edit="() => { showView = false; openEdit(viewing) }"
+            @delete="() => { showView = false; destroy(viewing) }"
+        />
     </AppLayout>
 </template>

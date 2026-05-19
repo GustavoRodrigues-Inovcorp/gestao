@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useForm } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
+import { useMenuPermissions } from '@/composables/useMenuPermissions'
 import { Button } from '@/Components/ui/button'
 import { Input } from '@/Components/ui/input'
 import { Label } from '@/Components/ui/label'
@@ -14,6 +15,8 @@ import { Plus, Pencil, Trash2 } from 'lucide-vue-next'
 
 const props = defineProps({ acoes: Array })
 
+const { can } = useMenuPermissions('configuracoes')
+
 const showCreate = ref(false)
 const showEdit = ref(false)
 const editing = ref(null)
@@ -22,6 +25,7 @@ const createForm = useForm({ nome: '' })
 const editForm = useForm({ nome: '', ativo: true })
 
 function openEdit(acao) {
+    if (!can('update')) return
     editing.value = acao
     editForm.nome = acao.nome
     editForm.ativo = acao.ativo
@@ -29,18 +33,21 @@ function openEdit(acao) {
 }
 
 function submitCreate() {
+    if (!can('create')) return
     createForm.post('/configuracoes/calendario-acoes', {
         onSuccess: () => { showCreate.value = false; createForm.reset() }
     })
 }
 
 function submitEdit() {
+    if (!can('update')) return
     editForm.put(`/configuracoes/calendario-acoes/${editing.value.id}`, {
         onSuccess: () => { showEdit.value = false }
     })
 }
 
 function destroy(acao) {
+    if (!can('delete')) return
     if (confirm(`Eliminar "${acao.nome}"?`)) {
         useForm({}).delete(`/configuracoes/calendario-acoes/${acao.id}`)
     }
@@ -54,7 +61,7 @@ function destroy(acao) {
         </template>
 
         <div class="space-y-4">
-            <div class="flex justify-end">
+            <div v-if="can('create')" class="flex justify-end">
                 <Dialog v-model:open="showCreate">
                     <DialogTrigger as-child>
                         <Button size="sm" class="gap-2">
@@ -79,8 +86,8 @@ function destroy(acao) {
                 </Dialog>
             </div>
 
-            <div class="rounded-lg border bg-card">
-                <table class="w-full text-sm">
+            <div class="w-full overflow-x-auto rounded-lg border bg-card">
+                <table class="w-full text-sm min-w-max">
                     <thead class="border-b bg-muted/50">
                         <tr>
                             <th class="px-4 py-3 text-left font-medium text-muted-foreground">Nome</th>
@@ -103,10 +110,10 @@ function destroy(acao) {
                             </td>
                             <td class="px-4 py-3 text-right">
                                 <div class="flex justify-end gap-2">
-                                    <Button size="icon" variant="ghost" @click="openEdit(acao)">
+                                    <Button v-if="can('update')" size="icon" variant="ghost" @click="openEdit(acao)">
                                         <Pencil class="w-4 h-4" />
                                     </Button>
-                                    <Button size="icon" variant="ghost" class="text-destructive hover:text-destructive" @click="destroy(acao)">
+                                    <Button v-if="can('delete')" size="icon" variant="ghost" class="text-destructive hover:text-destructive" @click="destroy(acao)">
                                         <Trash2 class="w-4 h-4" />
                                     </Button>
                                 </div>
@@ -117,7 +124,7 @@ function destroy(acao) {
             </div>
         </div>
 
-        <Dialog v-model:open="showEdit">
+        <Dialog v-if="can('update')" v-model:open="showEdit">
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>Editar Ação</DialogTitle>

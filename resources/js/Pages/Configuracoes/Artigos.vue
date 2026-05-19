@@ -2,10 +2,12 @@
 import { ref } from 'vue'
 import { useForm } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
+import { useMenuPermissions } from '@/composables/useMenuPermissions'
 import { Button } from '@/Components/ui/button'
 import { Input } from '@/Components/ui/input'
 import { Label } from '@/Components/ui/label'
-import { Badge } from '@/Components/ui/badge'
+import ViewSheet from '@/Components/ui/sheet/ViewSheet.vue'
+
 import {
     Dialog, DialogContent, DialogHeader,
     DialogTitle, DialogTrigger, DialogFooter,
@@ -22,9 +24,13 @@ const props = defineProps({
     taxas_iva: Array,
 })
 
+const { can } = useMenuPermissions('configuracoes')
+
 const showCreate = ref(false)
 const showEdit = ref(false)
 const editing = ref(null)
+const showView = ref(false)
+const viewing = ref(null)
 
 function defaultForm(overrides = {}) {
     return {
@@ -39,12 +45,14 @@ const createForm = useForm(defaultForm())
 const editForm = useForm(defaultForm())
 
 function openEdit(artigo) {
+    if (!can('update')) return
     editing.value = artigo
     Object.assign(editForm, defaultForm({ ...artigo, foto: null }))
     showEdit.value = true
 }
 
 function submitCreate() {
+    if (!can('create')) return
     createForm.post('/configuracoes/artigos', {
         forceFormData: true,
         onSuccess: () => { showCreate.value = false; Object.assign(createForm, defaultForm()) }
@@ -52,6 +60,7 @@ function submitCreate() {
 }
 
 function submitEdit() {
+    if (!can('update')) return
     editForm.post(`/configuracoes/artigos/${editing.value.id}`, {
         forceFormData: true,
         onSuccess: () => { showEdit.value = false }
@@ -59,6 +68,7 @@ function submitEdit() {
 }
 
 function destroy(artigo) {
+    if (!can('delete')) return
     if (confirm(`Eliminar "${artigo.nome}"?`)) {
         useForm({}).delete(`/configuracoes/artigos/${artigo.id}`)
     }
@@ -66,6 +76,24 @@ function destroy(artigo) {
 
 function formatPrice(val) {
     return Number(val).toLocaleString('pt-PT', { style: 'currency', currency: 'EUR' })
+}
+
+function openView(entidade) {
+    viewing.value = entidade
+    showView.value = true
+}
+
+function viewFields(a) {
+    if (!a) return []
+    return [
+        { label: 'Referência', value: a.referencia },
+        { label: 'Nome', value: a.nome },
+        { label: 'Descrição', value: a.descricao },
+        { label: 'Preço', value: a.preco, type: 'currency' },
+        { label: 'IVA', value: a.iva },
+        { label: 'Observações', value: a.observacoes },
+        { label: 'Estado', value: a.ativo ? 'Ativo' : 'Inativo' },
+    ]
 }
 </script>
 
@@ -77,7 +105,7 @@ function formatPrice(val) {
 
         <div class="space-y-4">
             <!-- Ação principal: criar um novo artigo. -->
-            <div class="flex justify-end">
+            <div v-if="can('create')" class="flex justify-end">
                 <Dialog v-model:open="showCreate">
                     <DialogTrigger as-child>
                         <Button size="sm" class="gap-2">
@@ -150,17 +178,15 @@ function formatPrice(val) {
             </div>
 
             <!-- Tabela de artigos com fotografia, preço e estado. -->
-            <div class="rounded-lg border bg-card">
-                <table class="w-full text-sm">
+            <div class="w-full overflow-x-auto rounded-lg border bg-card">
+                <table class="w-full text-sm min-w-max">
                     <thead class="border-b bg-muted/50">
                         <tr>
-                            <th class="px-4 py-3 text-left font-medium text-muted-foreground">Foto</th>
                             <th class="px-4 py-3 text-left font-medium text-muted-foreground">Referência</th>
+                            <th class="px-4 py-3 text-left font-medium text-muted-foreground">Foto</th>
                             <th class="px-4 py-3 text-left font-medium text-muted-foreground">Nome</th>
                             <th class="px-4 py-3 text-left font-medium text-muted-foreground">Descrição</th>
                             <th class="px-4 py-3 text-left font-medium text-muted-foreground">Preço</th>
-                            <th class="px-4 py-3 text-left font-medium text-muted-foreground">IVA</th>
-                            <th class="px-4 py-3 text-left font-medium text-muted-foreground">Estado</th>
                             <th class="px-4 py-3 text-right font-medium text-muted-foreground">Ações</th>
                         </tr>
                     </thead>
@@ -170,29 +196,23 @@ function formatPrice(val) {
                                 Nenhum artigo registado.
                             </td>
                         </tr>
-                        <tr v-for="a in artigos" :key="a.id" class="border-b last:border-0 hover:bg-muted/30">
+                        <tr v-for="a in artigos" :key="a.id" class="border-b last:border-0 hover:bg-muted/30" @click="openView(a)">
+                            <td class="px-4 py-3 font-mono text-xs">{{ a.referencia }}</td>
                             <td class="px-4 py-3">
                                 <img v-if="a.foto" :src="a.foto" alt="Foto" class="w-10 h-10 object-cover rounded-md border" />
                                 <div v-else class="w-10 h-10 rounded-md border bg-muted flex items-center justify-center">
                                     <ImageIcon class="w-4 h-4 text-muted-foreground" />
                                 </div>
                             </td>
-                            <td class="px-4 py-3 font-mono text-xs">{{ a.referencia }}</td>
                             <td class="px-4 py-3 font-medium">{{ a.nome }}</td>
                             <td class="px-4 py-3 text-muted-foreground max-w-xs truncate">{{ a.descricao ?? '—' }}</td>
                             <td class="px-4 py-3">{{ formatPrice(a.preco) }}</td>
-                            <td class="px-4 py-3 text-muted-foreground">{{ a.iva ?? '—' }}</td>
-                            <td class="px-4 py-3">
-                                <Badge :variant="a.ativo ? 'default' : 'secondary'">
-                                    {{ a.ativo ? 'Ativo' : 'Inativo' }}
-                                </Badge>
-                            </td>
                             <td class="px-4 py-3 text-right">
-                                <div class="flex justify-end gap-2">
-                                    <Button size="icon" variant="ghost" @click="openEdit(a)">
+                                <div class="flex justify-end gap-2" @click.stop>
+                                    <Button v-if="can('update')" size="icon" variant="ghost" @click="openEdit(a)">
                                         <Pencil class="w-4 h-4" />
                                     </Button>
-                                    <Button size="icon" variant="ghost" class="text-destructive hover:text-destructive" @click="destroy(a)">
+                                    <Button v-if="can('delete')" size="icon" variant="ghost" class="text-destructive hover:text-destructive" @click="destroy(a)">
                                         <Trash2 class="w-4 h-4" />
                                     </Button>
                                 </div>
@@ -204,7 +224,7 @@ function formatPrice(val) {
         </div>
 
         <!-- Dialog Editar -->
-        <Dialog v-model:open="showEdit">
+        <Dialog v-if="can('update')" v-model:open="showEdit">
             <DialogContent class="max-w-lg max-h-[85vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>Editar Artigo</DialogTitle>
@@ -268,5 +288,15 @@ function formatPrice(val) {
                 </DialogFooter>
             </DialogContent>
         </Dialog>
+        <ViewSheet
+            :open="showView"
+            :title="'Artigo — ' + (viewing?.referencia ?? '')"
+            :fields="viewFields(viewing)"
+            :can-edit="can('update')"
+            :can-delete="can('delete')"
+            @update:open="showView = $event"
+            @edit="() => { showView = false; openEdit(viewing) }"
+            @delete="() => { showView = false; destroy(viewing) }"
+        /> 
     </AppLayout>
 </template>

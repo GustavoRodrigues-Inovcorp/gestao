@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useForm } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
+import { useMenuPermissions } from '@/composables/useMenuPermissions'
 import { Button } from '@/Components/ui/button'
 import { Input } from '@/Components/ui/input'
 import { Label } from '@/Components/ui/label'
@@ -13,6 +14,8 @@ import {
 import { Plus, Pencil, Trash2 } from 'lucide-vue-next'
 
 const props = defineProps({ contas: Array })
+
+const { can } = useMenuPermissions('financeiro')
 
 const showCreate = ref(false)
 const showEdit = ref(false)
@@ -30,24 +33,28 @@ const createForm = useForm(defaultForm())
 const editForm = useForm(defaultForm())
 
 function openEdit(conta) {
+    if (!can('update')) return
     editing.value = conta
     Object.assign(editForm, defaultForm(conta))
     showEdit.value = true
 }
 
 function submitCreate() {
+    if (!can('create')) return
     createForm.post('/financeiro/contas-bancarias', {
         onSuccess: () => { showCreate.value = false; Object.assign(createForm, defaultForm()) }
     })
 }
 
 function submitEdit() {
+    if (!can('update')) return
     editForm.put(`/financeiro/contas-bancarias/${editing.value.id}`, {
         onSuccess: () => { showEdit.value = false }
     })
 }
 
 function destroy(conta) {
+    if (!can('delete')) return
     if (confirm(`Eliminar conta "${conta.banco} - ${conta.iban}"?`)) {
         useForm({}).delete(`/financeiro/contas-bancarias/${conta.id}`)
     }
@@ -69,7 +76,7 @@ function formatIban(iban) {
         </template>
 
         <div class="space-y-4">
-            <div class="flex justify-end">
+            <div v-if="can('create')" class="flex justify-end">
                 <Dialog v-model:open="showCreate">
                     <DialogTrigger as-child>
                         <Button size="sm" class="gap-2">
@@ -143,10 +150,10 @@ function formatIban(iban) {
                             </p>
                         </div>
                         <div class="flex gap-1">
-                            <Button size="icon" variant="ghost" @click="openEdit(conta)">
+                            <Button v-if="can('update')" size="icon" variant="ghost" @click="openEdit(conta)">
                                 <Pencil class="w-4 h-4" />
                             </Button>
-                            <Button size="icon" variant="ghost" class="text-destructive hover:text-destructive" @click="destroy(conta)">
+                            <Button v-if="can('delete')" size="icon" variant="ghost" class="text-destructive hover:text-destructive" @click="destroy(conta)">
                                 <Trash2 class="w-4 h-4" />
                             </Button>
                         </div>
@@ -156,7 +163,7 @@ function formatIban(iban) {
         </div>
 
         <!-- Dialog Editar -->
-        <Dialog v-model:open="showEdit">
+        <Dialog v-if="can('update')" v-model:open="showEdit">
             <DialogContent class="max-w-md">
                 <DialogHeader>
                     <DialogTitle>Editar Conta Bancária</DialogTitle>

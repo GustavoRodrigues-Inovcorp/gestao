@@ -2,6 +2,7 @@
 import { ref, computed } from 'vue'
 import { useForm } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
+import { useMenuPermissions } from '@/composables/useMenuPermissions'
 import { Button } from '@/Components/ui/button'
 import { Input } from '@/Components/ui/input'
 import { Label } from '@/Components/ui/label'
@@ -21,14 +22,16 @@ const props = defineProps({
     clientes: Array,
 })
 
+const { can } = useMenuPermissions('financeiro')
+
 const showCreate = ref(false)
 const search = ref('')
-const filtroCliente = ref(null)
+const filtroCliente = ref('')
 
 const filtered = computed(() => {
     let result = props.movimentos
-    if (filtroCliente.value) {
-        result = result.filter(m => m.entidade_id === filtroCliente.value)
+    if (filtroCliente.value && filtroCliente.value !== 'todos') {
+        result = result.filter(m => String(m.entidade_id) === filtroCliente.value)
     }
     if (search.value) {
         const q = search.value.toLowerCase()
@@ -42,7 +45,7 @@ const filtered = computed(() => {
 })
 
 const saldoTotal = computed(() => {
-    if (!filtroCliente.value) return null
+    if (!filtroCliente.value || filtroCliente.value === 'todos') return null
     const movs = filtered.value
     if (!movs.length) return 0
     return movs[0].saldo
@@ -50,8 +53,8 @@ const saldoTotal = computed(() => {
 
 function defaultForm() {
     return {
-        entidade_id: null,
-        data: new Date().toISOString().split('T')[0],
+        entidade_id: '',
+        data_movimento: new Date().toISOString().split('T')[0], // renomeado de 'data'
         descricao: '',
         debito: 0,
         credito: 0,
@@ -63,12 +66,14 @@ function defaultForm() {
 const createForm = useForm(defaultForm())
 
 function submitCreate() {
+    if (!can('create')) return
     createForm.post('/financeiro/conta-corrente-clientes', {
         onSuccess: () => { showCreate.value = false; Object.assign(createForm, defaultForm()) }
     })
 }
 
 function destroy(movimento) {
+    if (!can('delete')) return
     if (confirm('Eliminar este movimento?')) {
         useForm({}).delete(`/financeiro/conta-corrente-clientes/${movimento.id}`)
     }
@@ -113,8 +118,8 @@ const tipoBadge = {
                                 <SelectValue placeholder="Filtrar por cliente..." />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem :value="null">Todos os clientes</SelectItem>
-                                <SelectItem v-for="c in clientes" :key="c.id" :value="c.id">
+                                <SelectItem value="todos">Todos os clientes</SelectItem>
+                                <SelectItem v-for="c in clientes" :key="c.id" :value="String(c.id)">
                                     {{ c.nome }}
                                 </SelectItem>
                             </SelectContent>
@@ -133,7 +138,7 @@ const tipoBadge = {
                         </span>
                     </div>
 
-                    <Dialog v-model:open="showCreate">
+                    <Dialog v-if="can('create')" v-model:open="showCreate">
                         <DialogTrigger as-child>
                             <Button size="sm" class="gap-2">
                                 <Plus class="w-4 h-4" /> Novo Movimento
@@ -151,7 +156,7 @@ const tipoBadge = {
                                             <SelectValue placeholder="Selecionar cliente..." />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem v-for="c in clientes" :key="c.id" :value="c.id">
+                                            <SelectItem v-for="c in clientes" :key="c.id" :value="String(c.id)">
                                                 {{ c.nome }}
                                             </SelectItem>
                                         </SelectContent>
@@ -160,7 +165,12 @@ const tipoBadge = {
                                 </div>
                                 <div class="space-y-1">
                                     <Label>Data *</Label>
-                                    <Input v-model="createForm.data" type="date" />
+                                    <input
+                                        v-model="createForm.data_movimento"
+                                        type="date"
+                                        class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                        @mousedown.stop
+                                    />
                                 </div>
                                 <div class="space-y-1">
                                     <Label>Descrição *</Label>
@@ -203,8 +213,8 @@ const tipoBadge = {
             </div>
 
             <!-- Tabela -->
-            <div class="rounded-lg border bg-card">
-                <table class="w-full text-sm">
+            <div class="w-full overflow-x-auto rounded-lg border bg-card">
+                <table class="w-full text-sm min-w-max">
                     <thead class="border-b bg-muted/50">
                         <tr>
                             <th class="px-4 py-3 text-left font-medium text-muted-foreground">Data</th>
@@ -215,7 +225,7 @@ const tipoBadge = {
                             <th class="px-4 py-3 text-right font-medium text-muted-foreground">Débito</th>
                             <th class="px-4 py-3 text-right font-medium text-muted-foreground">Crédito</th>
                             <th class="px-4 py-3 text-right font-medium text-muted-foreground">Saldo</th>
-                            <th class="px-4 py-3 text-right font-medium text-muted-foreground">Ações</th>
+                                <th class="px-4 py-3 text-right font-medium text-muted-foreground">Ações</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -248,7 +258,7 @@ const tipoBadge = {
                                 {{ formatPrice(m.saldo) }}
                             </td>
                             <td class="px-4 py-3 text-right">
-                                <Button size="icon" variant="ghost" class="text-destructive hover:text-destructive" @click="destroy(m)">
+                                    <Button v-if="can('delete')" size="icon" variant="ghost" class="text-destructive hover:text-destructive" @click="destroy(m)">
                                     <Trash2 class="w-4 h-4" />
                                 </Button>
                             </td>

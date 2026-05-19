@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useForm } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
+import { useMenuPermissions } from '@/composables/useMenuPermissions'
 import { Button } from '@/Components/ui/button'
 import { Input } from '@/Components/ui/input'
 import { Label } from '@/Components/ui/label'
@@ -18,6 +19,8 @@ const props = defineProps({
     menuLabels: Object,
 })
 
+const { can } = useMenuPermissions('permissoes')
+
 const actions = ['create', 'read', 'update', 'delete']
 const actionLabels = { create: 'Criar', read: 'Ver', update: 'Editar', delete: 'Eliminar' }
 
@@ -25,7 +28,7 @@ const showCreate = ref(false)
 const showEdit = ref(false)
 const editing = ref(null)
 
-const createForm = useForm({ name: '', permissions: [] })
+const createForm = useForm({ name: '', permissions: [], ativo: true })
 const editForm = useForm({ name: '', permissions: [], ativo: true })
 
 function permKey(menu, action) {
@@ -58,26 +61,32 @@ function toggleAll(form, menu) {
 }
 
 function openEdit(role) {
+    if (!can('update')) return
     editing.value = role
     editForm.name = role.name
-    editForm.permissions = [...role.permissions]
+    editForm.permissions = role.permissions.map(p => String(p))
     editForm.ativo = role.ativo
     showEdit.value = true
 }
 
 function submitCreate() {
+    if (!can('create')) return
     createForm.post('/acessos/permissoes', {
         onSuccess: () => { showCreate.value = false; createForm.reset() }
     })
 }
 
 function submitEdit() {
+    if (!can('update')) return
     editForm.put(`/acessos/permissoes/${editing.value.id}`, {
-        onSuccess: () => { showEdit.value = false }
+        preserveScroll: true,
+        onSuccess: () => { showEdit.value = false },
+        onError: (errors) => { console.error('Erros:', errors) },
     })
 }
 
 function destroy(role) {
+    if (!can('delete')) return
     if (confirm(`Eliminar grupo "${role.name}"?`)) {
         useForm({}).delete(`/acessos/permissoes/${role.id}`)
     }
@@ -91,7 +100,7 @@ function destroy(role) {
         </template>
 
         <div class="space-y-4">
-            <div class="flex justify-end">
+            <div v-if="can('create')" class="flex justify-end">
                 <Dialog v-model:open="showCreate">
                     <DialogTrigger as-child>
                         <Button size="sm" class="gap-2">
@@ -143,6 +152,10 @@ function destroy(role) {
                                 </table>
                             </div>
                         </div>
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" v-model="createForm.ativo" id="ativo_create" class="rounded" />
+                            <Label for="ativo_create">Ativo</Label>
+                        </div>
                         <DialogFooter>
                             <Button @click="submitCreate" :disabled="createForm.processing">Guardar</Button>
                         </DialogFooter>
@@ -150,8 +163,8 @@ function destroy(role) {
                 </Dialog>
             </div>
 
-            <div class="rounded-lg border bg-card">
-                <table class="w-full text-sm">
+            <div class="w-full overflow-x-auto rounded-lg border bg-card">
+                <table class="w-full text-sm min-w-max">
                     <thead class="border-b bg-muted/50">
                         <tr>
                             <th class="px-4 py-3 text-left font-medium text-muted-foreground">Nome do Grupo</th>
@@ -176,10 +189,10 @@ function destroy(role) {
                             </td>
                             <td class="px-4 py-3 text-right">
                                 <div class="flex justify-end gap-2">
-                                    <Button size="icon" variant="ghost" @click="openEdit(role)">
+                                    <Button v-if="can('update')" size="icon" variant="ghost" @click="openEdit(role)">
                                         <Pencil class="w-4 h-4" />
                                     </Button>
-                                    <Button size="icon" variant="ghost" class="text-destructive hover:text-destructive" @click="destroy(role)">
+                                    <Button v-if="can('delete')" size="icon" variant="ghost" class="text-destructive hover:text-destructive" @click="destroy(role)">
                                         <Trash2 class="w-4 h-4" />
                                     </Button>
                                 </div>
@@ -191,7 +204,7 @@ function destroy(role) {
         </div>
 
         <!-- Dialog Editar -->
-        <Dialog v-model:open="showEdit">
+        <Dialog v-if="can('update')" v-model:open="showEdit">
             <DialogContent class="max-w-2xl max-h-[80vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>Editar Grupo</DialogTitle>

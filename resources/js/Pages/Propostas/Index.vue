@@ -2,10 +2,13 @@
 import { ref, computed } from 'vue'
 import { useForm } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
+import { useMenuPermissions } from '@/composables/useMenuPermissions'
 import { Button } from '@/Components/ui/button'
 import { Input } from '@/Components/ui/input'
 import { Label } from '@/Components/ui/label'
 import { Badge } from '@/Components/ui/badge'
+import ViewSheet from '@/Components/ui/sheet/ViewSheet.vue'
+
 import {
     Dialog, DialogContent, DialogHeader,
     DialogTitle, DialogTrigger, DialogFooter,
@@ -24,9 +27,13 @@ const props = defineProps({
     proximoNumero: Number,
 })
 
+const { can } = useMenuPermissions('propostas')
+
 const showCreate = ref(false)
 const showEdit = ref(false)
 const editing = ref(null)
+const showView = ref(false)
+const viewing = ref(null)
 
 function defaultForm(overrides = {}) {
     return {
@@ -76,40 +83,42 @@ function totalForm(form) {
 }
 
 function openEdit(proposta) {
+    if (!can('update')) return
     editing.value = proposta
-    // Carregar linhas da proposta
     fetch(`/propostas/${proposta.id}/linhas`)
         .then(r => r.json())
         .then(linhas => {
-            Object.assign(editForm, defaultForm({
-                entidade_id: proposta.entidade_id,
-                validade: proposta.validade_raw,
-                estado: proposta.estado,
-                linhas: linhas,
-            }))
+            editForm.entidade_id = proposta.entidade_id
+            editForm.validade = proposta.validade_raw
+            editForm.estado = proposta.estado
+            editForm.linhas = linhas
             showEdit.value = true
         })
 }
 
 function submitCreate() {
+    if (!can('create')) return
     createForm.post('/propostas', {
         onSuccess: () => { showCreate.value = false; Object.assign(createForm, defaultForm()) }
     })
 }
 
 function submitEdit() {
+    if (!can('update')) return
     editForm.put(`/propostas/${editing.value.id}`, {
         onSuccess: () => { showEdit.value = false }
     })
 }
 
 function destroy(proposta) {
+    if (!can('delete')) return
     if (confirm(`Eliminar proposta Nº ${proposta.numero}?`)) {
         useForm({}).delete(`/propostas/${proposta.id}`)
     }
 }
 
 function converter(proposta) {
+    if (!can('update')) return
     if (confirm(`Converter proposta Nº ${proposta.numero} em encomenda?`)) {
         useForm({}).post(`/propostas/${proposta.id}/converter`)
     }
@@ -123,6 +132,23 @@ const estadoBadge = {
     rascunho: 'secondary',
     fechado: 'default',
 }
+
+function openView(entidade) {
+    viewing.value = entidade
+    showView.value = true
+}
+
+function viewFields(p) {
+    if (!p) return []
+    return [
+        { label: 'Número', value: String(p.numero).padStart(5, '0') },
+        { label: 'Data', value: p.data },
+        { label: 'Cliente', value: p.cliente },
+        { label: 'Validade', value: p.validade },
+        { label: 'Valor Total', value: p.valor_total, type: 'currency' },
+        { label: 'Estado', value: p.estado },
+    ]
+}
 </script>
 
 <template>
@@ -133,7 +159,7 @@ const estadoBadge = {
 
         <div class="space-y-4">
             <!-- Cabeçalho com ação principal de criação. -->
-            <div class="flex justify-end">
+            <div v-if="can('create')" class="flex justify-end">
                 <Dialog v-model:open="showCreate">
                     <DialogTrigger as-child>
                         <Button size="sm" class="gap-2">
@@ -272,15 +298,141 @@ const estadoBadge = {
                 </Dialog>
             </div>
 
+            <!-- Dialog Editar -->
+            <Dialog v-if="can('update')" v-model:open="showEdit">
+                <DialogContent class="max-w-4xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle>Editar Proposta — Nº {{ editing?.numero }}</DialogTitle>
+                    </DialogHeader>
+                    <div class="space-y-4 py-2">
+                        <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 16px;">
+                            <div class="space-y-1">
+                                <Label>Cliente *</Label>
+                                <Select v-model="editForm.entidade_id">
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Selecionar cliente..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem v-for="c in clientes" :key="c.id" :value="c.id">
+                                            {{ c.nome }}
+                                        </SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div class="space-y-1">
+                                <Label>Validade</Label>
+                                <Input v-model="editForm.validade" type="date" />
+                            </div>
+                            <div class="space-y-1">
+                                <Label>Estado</Label>
+                                <Select v-model="editForm.estado">
+                                    <SelectTrigger><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="rascunho">Rascunho</SelectItem>
+                                        <SelectItem value="fechado">Fechado</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+
+                        <div class="space-y-2">
+                            <div class="flex items-center justify-between">
+                                <Label>Artigos</Label>
+                                <Button type="button" size="sm" variant="outline" @click="addLinha(editForm)" class="gap-1">
+                                    <Plus class="w-3.5 h-3.5" /> Adicionar Linha
+                                </Button>
+                            </div>
+
+                            <div v-if="editForm.linhas.length === 0" class="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
+                                Adiciona pelo menos uma linha.
+                            </div>
+
+                            <div v-for="(linha, i) in editForm.linhas" :key="i" class="rounded-md border p-3 space-y-2">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs font-medium text-muted-foreground">Linha {{ i + 1 }}</span>
+                                    <Button type="button" size="icon" variant="ghost" class="w-6 h-6 text-destructive" @click="removeLinha(editForm, i)">
+                                        <X class="w-3.5 h-3.5" />
+                                    </Button>
+                                </div>
+                                <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 8px;">
+                                    <div class="space-y-1">
+                                        <Label class="text-xs">Artigo</Label>
+                                        <Select v-model="linha.artigo_id" @update:modelValue="onArtigoSelect(editForm, i, $event)">
+                                            <SelectTrigger class="h-8 text-xs">
+                                                <SelectValue placeholder="Pesquisar artigo..." />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem v-for="a in artigos" :key="a.id" :value="a.id">
+                                                    {{ a.referencia }} — {{ a.nome }}
+                                                </SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div class="space-y-1">
+                                        <Label class="text-xs">Fornecedor</Label>
+                                        <Select v-model="linha.fornecedor_id">
+                                            <SelectTrigger class="h-8 text-xs">
+                                                <SelectValue placeholder="Fornecedor..." />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem v-for="f in fornecedores" :key="f.id" :value="f.id">
+                                                    {{ f.nome }}
+                                                </SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div class="space-y-1">
+                                        <Label class="text-xs">Referência</Label>
+                                        <Input v-model="linha.referencia" class="h-8 text-xs" />
+                                    </div>
+                                </div>
+                                <div style="display: grid; grid-template-columns: 2fr 0.5fr 1fr 1fr 0.5fr; gap: 8px; align-items: end;">
+                                    <div class="space-y-1">
+                                        <Label class="text-xs">Nome *</Label>
+                                        <Input v-model="linha.nome" class="h-8 text-xs" />
+                                    </div>
+                                    <div class="space-y-1">
+                                        <Label class="text-xs">Qtd.</Label>
+                                        <Input v-model="linha.quantidade" type="number" min="1" class="h-8 text-xs" />
+                                    </div>
+                                    <div class="space-y-1">
+                                        <Label class="text-xs">Preço Venda</Label>
+                                        <Input v-model="linha.preco_venda" type="number" min="0" step="0.01" class="h-8 text-xs" />
+                                    </div>
+                                    <div class="space-y-1">
+                                        <Label class="text-xs">Preço Custo</Label>
+                                        <Input v-model="linha.preco_custo" type="number" min="0" step="0.01" class="h-8 text-xs" />
+                                    </div>
+                                    <div class="space-y-1">
+                                        <Label class="text-xs">IVA (%)</Label>
+                                        <Input v-model="linha.iva" type="number" min="0" max="100" class="h-8 text-xs" />
+                                    </div>
+                                </div>
+                                <div class="flex justify-end text-xs font-medium text-muted-foreground">
+                                    Subtotal: {{ formatPrice(calcSubtotal(linha)) }}
+                                </div>
+                            </div>
+
+                            <div v-if="editForm.linhas.length > 0" class="flex justify-end text-base font-bold pt-2">
+                                Total: {{ formatPrice(totalForm(editForm)) }}
+                            </div>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button @click="submitEdit" :disabled="editForm.processing">Guardar</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
             <!-- Tabela de propostas existentes. -->
-            <div class="rounded-lg border bg-card">
-                <table class="w-full text-sm">
+            <div class="w-full overflow-x-auto rounded-lg border bg-card">
+                <table class="w-full text-sm min-w-max">
                     <thead class="border-b bg-muted/50">
                         <tr>
-                            <th class="px-4 py-3 text-left font-medium text-muted-foreground">Nº</th>
                             <th class="px-4 py-3 text-left font-medium text-muted-foreground">Data</th>
-                            <th class="px-4 py-3 text-left font-medium text-muted-foreground">Cliente</th>
+                            <th class="px-4 py-3 text-left font-medium text-muted-foreground">Nº</th>
                             <th class="px-4 py-3 text-left font-medium text-muted-foreground">Validade</th>
+                            <th class="px-4 py-3 text-left font-medium text-muted-foreground">Cliente</th>
                             <th class="px-4 py-3 text-right font-medium text-muted-foreground">Valor Total</th>
                             <th class="px-4 py-3 text-left font-medium text-muted-foreground">Estado</th>
                             <th class="px-4 py-3 text-right font-medium text-muted-foreground">Ações</th>
@@ -292,27 +444,27 @@ const estadoBadge = {
                                 Nenhuma proposta registada.
                             </td>
                         </tr>
-                        <tr v-for="p in propostas" :key="p.id" class="border-b last:border-0 hover:bg-muted/30">
-                            <td class="px-4 py-3 font-mono">{{ String(p.numero).padStart(5, '0') }}</td>
+                        <tr v-for="p in propostas" :key="p.id" class="border-b last:border-0 hover:bg-muted/30" @click="openView(p)">
                             <td class="px-4 py-3 text-muted-foreground">{{ p.data ?? '—' }}</td>
-                            <td class="px-4 py-3 font-medium">{{ p.cliente }}</td>
+                            <td class="px-4 py-3 font-mono">{{ String(p.numero).padStart(5, '0') }}</td>
                             <td class="px-4 py-3 text-muted-foreground">{{ p.validade ?? '—' }}</td>
+                            <td class="px-4 py-3 font-medium">{{ p.cliente }}</td>
                             <td class="px-4 py-3 text-right font-medium">{{ formatPrice(p.valor_total) }}</td>
                             <td class="px-4 py-3">
                                 <Badge :variant="estadoBadge[p.estado]">{{ p.estado }}</Badge>
                             </td>
                             <td class="px-4 py-3 text-right">
-                                <div class="flex justify-end gap-1">
+                                <div class="flex justify-end gap-1" @click.stop>
                                     <Button size="icon" variant="ghost" as="a" :href="`/propostas/${p.id}/pdf`" target="_blank" title="Download PDF">
                                         <FileDown class="w-4 h-4" />
                                     </Button>
-                                    <Button v-if="p.estado === 'fechado'" size="icon" variant="ghost" @click="converter(p)" title="Converter em Encomenda">
+                                    <Button v-if="can('update') && p.estado === 'fechado'" size="icon" variant="ghost" @click="converter(p)" title="Converter em Encomenda">
                                         <ArrowRight class="w-4 h-4" />
                                     </Button>
-                                    <Button size="icon" variant="ghost" @click="openEdit(p)">
+                                    <Button v-if="can('update')" size="icon" variant="ghost" @click="openEdit(p)">
                                         <Pencil class="w-4 h-4" />
                                     </Button>
-                                    <Button size="icon" variant="ghost" class="text-destructive hover:text-destructive" @click="destroy(p)">
+                                    <Button v-if="can('delete')" size="icon" variant="ghost" class="text-destructive hover:text-destructive" @click="destroy(p)">
                                         <Trash2 class="w-4 h-4" />
                                     </Button>
                                 </div>
@@ -322,5 +474,15 @@ const estadoBadge = {
                 </table>
             </div>
         </div>
+        <ViewSheet
+            :open="showView"
+            :title="'Proposta — ' + (viewing?.numero ?? '')"
+            :fields="viewFields(viewing)"
+            :can-edit="can('update')"
+            :can-delete="can('delete')"
+            @update:open="showView = $event"
+            @edit="() => { showView = false; openEdit(viewing) }"
+            @delete="() => { showView = false; destroy(viewing) }"
+        />
     </AppLayout>
 </template>

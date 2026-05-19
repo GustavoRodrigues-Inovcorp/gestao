@@ -2,10 +2,13 @@
 import { ref } from 'vue'
 import { useForm } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
+import { useMenuPermissions } from '@/composables/useMenuPermissions'
 import { Button } from '@/Components/ui/button'
 import { Input } from '@/Components/ui/input'
 import { Label } from '@/Components/ui/label'
 import { Badge } from '@/Components/ui/badge'
+import ViewSheet from '@/Components/ui/sheet/ViewSheet.vue'
+
 import {
     Dialog, DialogContent, DialogHeader,
     DialogTitle, DialogTrigger, DialogFooter,
@@ -24,9 +27,13 @@ const props = defineProps({
     proximoNumero: Number,
 })
 
+const { can } = useMenuPermissions('encomendas_clientes')
+
 const showCreate = ref(false)
 const showEdit = ref(false)
 const editing = ref(null)
+const showView = ref(false)
+const viewing = ref(null)
 
 function defaultForm(overrides = {}) {
     return {
@@ -76,6 +83,7 @@ function totalForm(form) {
 }
 
 function openEdit(encomenda) {
+    if (!can('update')) return
     editing.value = encomenda
     fetch(`/encomendas/${encomenda.id}/linhas`)
         .then(r => r.json())
@@ -91,24 +99,28 @@ function openEdit(encomenda) {
 }
 
 function submitCreate() {
+    if (!can('create')) return
     createForm.post('/encomendas', {
         onSuccess: () => { showCreate.value = false; Object.assign(createForm, defaultForm()) }
     })
 }
 
 function submitEdit() {
+    if (!can('update')) return
     editForm.put(`/encomendas/${editing.value.id}`, {
         onSuccess: () => { showEdit.value = false }
     })
 }
 
 function destroy(encomenda) {
+    if (!can('delete')) return
     if (confirm(`Eliminar encomenda Nº ${encomenda.numero}?`)) {
         useForm({}).delete(`/encomendas/${encomenda.id}`)
     }
 }
 
 function converterFornecedor(encomenda) {
+    if (!can('update')) return
     if (confirm(`Converter encomenda Nº ${encomenda.numero} para encomendas de fornecedor?`)) {
         useForm({}).post(`/encomendas/${encomenda.id}/converter-fornecedor`)
     }
@@ -119,6 +131,24 @@ function formatPrice(val) {
 }
 
 const estadoBadge = { rascunho: 'secondary', fechado: 'default' }
+
+function openView(entidade) {
+    viewing.value = entidade
+    showView.value = true
+}
+
+function viewFields(e) {
+    if (!e) return []
+    return [
+        { label: 'Número', value: String(e.numero).padStart(5, '0') },
+        { label: 'Data', value: e.data },
+        { label: 'Cliente', value: e.cliente },
+        { label: 'Validade', value: e.validade },
+        { label: 'Valor Total', value: e.valor_total, type: 'currency' },
+        { label: 'Estado', value: e.estado },
+        { label: 'Proposta Origem', value: e.proposta_id ? 'Nº ' + String(e.proposta_id).padStart(5, '0') : null },
+    ]
+}
 </script>
 
 <template>
@@ -129,7 +159,7 @@ const estadoBadge = { rascunho: 'secondary', fechado: 'default' }
 
         <div class="space-y-4">
             <!-- Ação principal: criar uma nova encomenda. -->
-            <div class="flex justify-end">
+            <div v-if="can('create')" class="flex justify-end">
                 <Dialog v-model:open="showCreate">
                     <DialogTrigger as-child>
                         <Button size="sm" class="gap-2">
@@ -266,14 +296,14 @@ const estadoBadge = { rascunho: 'secondary', fechado: 'default' }
             </div>
 
             <!-- Tabela das encomendas já registadas. -->
-            <div class="rounded-lg border bg-card">
-                <table class="w-full text-sm">
+            <div class="w-full overflow-x-auto rounded-lg border bg-card">
+                <table class="w-full text-sm min-w-max">
                     <thead class="border-b bg-muted/50">
                         <tr>
-                            <th class="px-4 py-3 text-left font-medium text-muted-foreground">Nº</th>
                             <th class="px-4 py-3 text-left font-medium text-muted-foreground">Data</th>
-                            <th class="px-4 py-3 text-left font-medium text-muted-foreground">Cliente</th>
+                            <th class="px-4 py-3 text-left font-medium text-muted-foreground">Nº</th>
                             <th class="px-4 py-3 text-left font-medium text-muted-foreground">Validade</th>
+                            <th class="px-4 py-3 text-left font-medium text-muted-foreground">Cliente</th>
                             <th class="px-4 py-3 text-right font-medium text-muted-foreground">Valor Total</th>
                             <th class="px-4 py-3 text-left font-medium text-muted-foreground">Estado</th>
                             <th class="px-4 py-3 text-right font-medium text-muted-foreground">Ações</th>
@@ -285,27 +315,27 @@ const estadoBadge = { rascunho: 'secondary', fechado: 'default' }
                                 Nenhuma encomenda registada.
                             </td>
                         </tr>
-                        <tr v-for="e in encomendas" :key="e.id" class="border-b last:border-0 hover:bg-muted/30">
-                            <td class="px-4 py-3 font-mono">{{ String(e.numero).padStart(5, '0') }}</td>
+                        <tr v-for="e in encomendas" :key="e.id" :data-row-viewer="JSON.stringify(e)" class="border-b last:border-0 cursor-pointer hover:bg-muted/30" @click="openView(e)">
                             <td class="px-4 py-3 text-muted-foreground">{{ e.data ?? '—' }}</td>
-                            <td class="px-4 py-3 font-medium">{{ e.cliente }}</td>
+                            <td class="px-4 py-3 font-mono">{{ String(e.numero).padStart(5, '0') }}</td>
                             <td class="px-4 py-3 text-muted-foreground">{{ e.validade ?? '—' }}</td>
+                            <td class="px-4 py-3 font-medium">{{ e.cliente }}</td>
                             <td class="px-4 py-3 text-right font-medium">{{ formatPrice(e.valor_total) }}</td>
                             <td class="px-4 py-3">
                                 <Badge :variant="estadoBadge[e.estado]">{{ e.estado }}</Badge>
                             </td>
                             <td class="px-4 py-3 text-right">
-                                <div class="flex justify-end gap-1">
+                                <div class="flex justify-end gap-1" @click.stop>
                                     <Button size="icon" variant="ghost" as="a" :href="`/encomendas/${e.id}/pdf`" target="_blank" title="Download PDF">
                                         <FileDown class="w-4 h-4" />
                                     </Button>
-                                    <Button v-if="e.estado === 'fechado'" size="icon" variant="ghost" @click="converterFornecedor(e)" title="Converter para Encomenda Fornecedor">
+                                    <Button v-if="can('update') && e.estado === 'fechado'" size="icon" variant="ghost" @click="converterFornecedor(e)" title="Converter para Encomenda Fornecedor">
                                         <ArrowRight class="w-4 h-4" />
                                     </Button>
-                                    <Button size="icon" variant="ghost" @click="openEdit(e)">
+                                    <Button v-if="can('update')" size="icon" variant="ghost" @click="openEdit(e)">
                                         <Pencil class="w-4 h-4" />
                                     </Button>
-                                    <Button size="icon" variant="ghost" class="text-destructive hover:text-destructive" @click="destroy(e)">
+                                    <Button v-if="can('delete')" size="icon" variant="ghost" class="text-destructive hover:text-destructive" @click="destroy(e)">
                                         <Trash2 class="w-4 h-4" />
                                     </Button>
                                 </div>
@@ -317,7 +347,7 @@ const estadoBadge = { rascunho: 'secondary', fechado: 'default' }
         </div>
 
         <!-- Dialog Editar -->
-        <Dialog v-model:open="showEdit">
+        <Dialog v-if="can('update')" v-model:open="showEdit">
             <DialogContent class="max-w-4xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>Editar Encomenda — Nº {{ editing?.numero }}</DialogTitle>
@@ -437,5 +467,15 @@ const estadoBadge = { rascunho: 'secondary', fechado: 'default' }
                 </DialogFooter>
             </DialogContent>
         </Dialog>
+        <ViewSheet
+            :open="showView"
+            :title="'Encomenda — ' + (viewing?.numero ?? '')"
+            :fields="viewFields(viewing)"
+            :can-edit="can('update')"
+            :can-delete="can('delete')"
+            @update:open="showView = $event"
+            @edit="() => { showView = false; openEdit(viewing) }"
+            @delete="() => { showView = false; destroy(viewing) }"
+        />
     </AppLayout>
 </template>

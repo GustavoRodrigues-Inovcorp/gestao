@@ -1,10 +1,19 @@
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
     <head>
+        @php
+            $empresa = \App\Models\Empresa::first();
+            $appTitle = $empresa?->nome ?? config('app.name', 'Laravel');
+            $faviconUrl = $empresa?->logotipo
+                ? route('empresa.logotipo') . '?v=' . ($empresa?->updated_at?->timestamp ?? now()->timestamp)
+                : asset('favicon.ico');
+        @endphp
+
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
 
-        <title inertia>{{ config('app.name', 'Laravel') }}</title>
+        <title inertia>{{ $appTitle }}</title>
+        <link rel="icon" type="image/*" href="{{ $faviconUrl }}">
 
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">

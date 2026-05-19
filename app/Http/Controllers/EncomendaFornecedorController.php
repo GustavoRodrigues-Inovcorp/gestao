@@ -19,6 +19,8 @@ class EncomendaFornecedorController extends Controller
                 'id'            => $e->id,
                 'numero'        => $e->numero,
                 'data'          => $e->data?->format('d/m/Y'),
+                'validade'     => $e->validade?->format('d/m/Y'),
+                'validade_raw' => $e->validade?->format('Y-m-d'),
                 'fornecedor'    => $e->fornecedor->nome,
                 'fornecedor_id' => $e->fornecedor_id,
                 'valor_total'   => $e->valor_total,
@@ -35,6 +37,7 @@ class EncomendaFornecedorController extends Controller
     {
         $validated = $request->validate([
             'fornecedor_id'        => ['required', 'exists:entidades,id'],
+            'validade'             => ['nullable', 'date'],
             'estado'               => ['required', 'in:rascunho,fechado'],
             'linhas'               => ['required', 'array', 'min:1'],
             'linhas.*.nome'        => ['required', 'string'],
@@ -47,6 +50,7 @@ class EncomendaFornecedorController extends Controller
         $encomenda = EncomendaFornecedor::create([
             'numero'        => EncomendaFornecedor::proximoNumero(),
             'data'          => $validated['estado'] === 'fechado' ? now() : null,
+            'validade'      => $validated['validade'] ?? null,
             'fornecedor_id' => $validated['fornecedor_id'],
             'estado'        => $validated['estado'],
             'valor_total'   => 0,
@@ -74,6 +78,7 @@ class EncomendaFornecedorController extends Controller
     {
         $validated = $request->validate([
             'fornecedor_id'        => ['required', 'exists:entidades,id'],
+            'validade'             => ['nullable', 'date'],
             'estado'               => ['required', 'in:rascunho,fechado'],
             'linhas'               => ['required', 'array', 'min:1'],
             'linhas.*.nome'        => ['required', 'string'],
@@ -85,6 +90,7 @@ class EncomendaFornecedorController extends Controller
 
         $encomendaFornecedor->update([
             'fornecedor_id' => $validated['fornecedor_id'],
+            'validade'      => $validated['validade'] ?? null,
             'estado'        => $validated['estado'],
             'data'          => $validated['estado'] === 'fechado' && !$encomendaFornecedor->data ? now() : $encomendaFornecedor->data,
         ]);

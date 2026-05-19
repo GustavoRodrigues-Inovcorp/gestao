@@ -3,7 +3,7 @@ namespace App\Http\Controllers\Financeiro;
 
 use App\Helpers\LogHelper;
 use App\Http\Controllers\Controller;
-use App\Mail\ComprovatiovPagamentoMail;
+use App\Mail\ComprovativoPagamentoMail;
 use App\Models\Entidade;
 use App\Models\EncomendaFornecedor;
 use App\Models\FaturaFornecedor;
@@ -21,18 +21,20 @@ class FaturaFornecedorController extends Controller
                 ->orderByDesc('id')
                 ->get()
                 ->map(fn($f) => [
-                    'id'                    => $f->id,
-                    'numero'                => $f->numero,
-                    'data_fatura'           => $f->data_fatura?->format('d/m/Y'),
-                    'data_vencimento'       => $f->data_vencimento?->format('d/m/Y'),
-                    'fornecedor'            => $f->fornecedor->nome,
-                    'fornecedor_id'         => $f->fornecedor_id,
+                    'id'                      => $f->id,
+                    'numero'                  => $f->numero,
+                    'data_fatura'             => $f->data_fatura?->format('d/m/Y'),
+                    'data_fatura_raw'         => $f->data_fatura?->format('Y-m-d'),      // ← adiciona
+                    'data_vencimento'         => $f->data_vencimento?->format('d/m/Y'),
+                    'data_vencimento_raw'     => $f->data_vencimento?->format('Y-m-d'),  // ← adiciona
+                    'fornecedor'              => $f->fornecedor->nome,
+                    'fornecedor_id'           => $f->fornecedor_id,
                     'encomenda_fornecedor_id' => $f->encomenda_fornecedor_id,
-                    'encomenda_numero'      => $f->encomendaFornecedor?->numero,
-                    'valor_total'           => $f->valor_total,
-                    'documento'             => $f->documento ? '/financeiro/documento/' . $f->id : null,
-                    'comprovativo'          => $f->comprovativo ? '/financeiro/comprovativo/' . $f->id : null,
-                    'estado'                => $f->estado,
+                    'encomenda_numero'        => $f->encomendaFornecedor?->numero,
+                    'valor_total'             => $f->valor_total,
+                    'documento'               => $f->documento ? '/financeiro/documento/' . $f->id : null,
+                    'comprovativo'            => $f->comprovativo ? '/financeiro/comprovativo/' . $f->id : null,
+                    'estado'                  => $f->estado,
                 ]),
             'fornecedores' => Entidade::where('is_fornecedor', true)
                 ->where('ativo', true)
@@ -60,18 +62,23 @@ class FaturaFornecedorController extends Controller
             'encomenda_fornecedor_id' => ['nullable', 'exists:encomendas_fornecedor,id'],
             'valor_total'             => ['required', 'numeric', 'min:0'],
             'documento'               => ['nullable', 'file', 'max:10240'],
+            'comprovativo'            => ['nullable', 'file', 'max:10240'],
             'estado'                  => ['required', 'in:pendente,paga'],
         ]);
 
         if ($request->hasFile('documento')) {
             $validated['documento'] = $request->file('documento')
-                ->store('faturas/documentos', 'private');
+                ->store('faturas/documentos', 'local');
+        }
+
+        if ($request->hasFile('comprovativo')) {
+            $validated['comprovativo'] = $request->file('comprovativo')
+                ->store('faturas/comprovativos', 'local');
         }
 
         $validated['numero'] = FaturaFornecedor::proximoNumero();
-        $fatura = FaturaFornecedor::create($validated);
+        FaturaFornecedor::create($validated);
 
-        LogHelper::log('Faturas Fornecedor', "Criou fatura Nº {$fatura->numero}");
         return back()->with('success', 'Fatura criada.');
     }
 
@@ -89,10 +96,10 @@ class FaturaFornecedorController extends Controller
 
         if ($request->hasFile('documento')) {
             if ($faturaFornecedor->documento) {
-                Storage::disk('private')->delete($faturaFornecedor->documento);
+                Storage::disk('local')->delete($faturaFornecedor->documento);
             }
             $validated['documento'] = $request->file('documento')
-                ->store('faturas/documentos', 'private');
+                ->store('faturas/documentos', 'local');
         }
 
         $faturaFornecedor->update($validated);
@@ -106,10 +113,10 @@ class FaturaFornecedorController extends Controller
         LogHelper::log('Faturas Fornecedor', "Eliminou fatura Nº {$faturaFornecedor->numero}");
 
         if ($faturaFornecedor->documento) {
-            Storage::disk('private')->delete($faturaFornecedor->documento);
+            Storage::disk('local')->delete($faturaFornecedor->documento);
         }
         if ($faturaFornecedor->comprovativo) {
-            Storage::disk('private')->delete($faturaFornecedor->comprovativo);
+            Storage::disk('local')->delete($faturaFornecedor->comprovativo);
         }
         $faturaFornecedor->delete();
         return back();
@@ -122,28 +129,24 @@ class FaturaFornecedorController extends Controller
         ]);
 
         if ($faturaFornecedor->comprovativo) {
-            Storage::disk('private')->delete($faturaFornecedor->comprovativo);
+            Storage::disk('local')->delete($faturaFornecedor->comprovativo);
         }
 
         $path = $request->file('comprovativo')
-            ->store('faturas/comprovativos', 'private');
+            ->store('faturas/comprovativos', 'local');
 
         $faturaFornecedor->update(['comprovativo' => $path]);
-
         $faturaFornecedor->load('fornecedor');
 
         if ($faturaFornecedor->fornecedor->email) {
+            // Queue em vez de send
             Mail::to($faturaFornecedor->fornecedor->email)
-                ->send(new ComprovatiovPagamentoMail($faturaFornecedor, $path));
+                ->queue(new ComprovativoPagamentoMail($faturaFornecedor, $path));
         }
 
-        activity('faturas_fornecedor')
-            ->causedBy(auth()->user())
-            ->performedOn($faturaFornecedor)
-            ->log('Enviou comprovativo de pagamento');
-
         LogHelper::log('Faturas Fornecedor', "Enviou comprovativo fatura Nº {$faturaFornecedor->numero}");
-        return back()->with('success', 'Comprovativo enviado.');
+
+        return back()->with('success', 'Comprovativo enviado com sucesso.');
     }
 
     public function documento(FaturaFornecedor $faturaFornecedor)

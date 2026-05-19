@@ -14,8 +14,8 @@ class CalendarioEvento extends Model
     ];
 
     protected $casts = [
-        'inicio'      => 'datetime',
-        'fim'         => 'datetime',
+        'inicio'      => 'datetime:Y-m-d H:i:s',
+        'fim'         => 'datetime:Y-m-d H:i:s',
         'partilha'    => 'boolean',
         'conhecimento' => 'boolean',
     ];

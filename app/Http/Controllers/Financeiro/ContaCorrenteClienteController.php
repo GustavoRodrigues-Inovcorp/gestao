@@ -40,13 +40,13 @@ class ContaCorrenteClienteController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'entidade_id' => ['required', 'exists:entidades,id'],
-            'data'        => ['required', 'date'],
-            'descricao'   => ['required', 'string', 'max:255'],
-            'debito'      => ['nullable', 'numeric', 'min:0'],
-            'credito'     => ['nullable', 'numeric', 'min:0'],
-            'tipo'        => ['required', 'in:fatura,pagamento,nota_credito,outro'],
-            'referencia'  => ['nullable', 'string', 'max:100'],
+            'entidade_id'   => ['required', 'exists:entidades,id'],
+            'data_movimento' => ['required', 'date'],
+            'descricao'     => ['required', 'string', 'max:255'],
+            'debito'        => ['nullable', 'numeric', 'min:0'],
+            'credito'       => ['nullable', 'numeric', 'min:0'],
+            'tipo'          => ['required', 'in:fatura,pagamento,nota_credito,outro'],
+            'referencia'    => ['nullable', 'string', 'max:100'],
         ]);
 
         // Calcula saldo acumulado do cliente
@@ -62,6 +62,8 @@ class ContaCorrenteClienteController extends Controller
 
         ContaCorrenteCliente::create([
             ...$validated,
+            'entidade_id' => $validated['entidade_id'],
+            'data'        => $validated['data_movimento'],
             'debito'  => $debito,
             'credito' => $credito,
             'saldo'   => $saldo,

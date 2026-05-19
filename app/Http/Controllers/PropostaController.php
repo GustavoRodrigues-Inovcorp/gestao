@@ -16,16 +16,16 @@ class PropostaController extends Controller
     {
         return Inertia::render('Propostas/Index', [
             'propostas' => Proposta::with('entidade')->orderByDesc('id')->get()->map(fn($p) => [
-                'id'           => $p->id,
-                'numero'       => $p->numero,
-                'data'         => $p->data?->format('d/m/Y'),
-                'validade'     => $p->validade?->format('d/m/Y'),
-                'validade_raw' => $p->validade?->format('Y-m-d'),
-                'entidade_id'  => $p->entidade_id,
-                'cliente'      => $p->entidade->nome,
-                'valor_total'  => $p->valor_total,
-                'estado'       => $p->estado,
-            ]),
+            'id'           => $p->id,
+            'numero'       => $p->numero,
+            'data'         => $p->data?->format('d/m/Y'),
+            'validade'     => $p->validade?->format('d/m/Y'),
+            'validade_raw' => $p->validade?->format('Y-m-d'),
+            'entidade_id'  => $p->entidade_id,  // ← garante que está aqui
+            'cliente'      => $p->entidade->nome,
+            'valor_total'  => $p->valor_total,
+            'estado'       => $p->estado,
+        ]),
             'clientes'       => Entidade::where('is_cliente', true)->where('ativo', true)->orderBy('nome')->get(['id', 'nome']),
             'artigos'        => Artigo::where('ativo', true)->orderBy('nome')->get(['id', 'referencia', 'nome', 'preco', 'iva_id']),
             'fornecedores'   => Entidade::where('is_fornecedor', true)->where('ativo', true)->orderBy('nome')->get(['id', 'nome']),

@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useForm } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
+import { useMenuPermissions } from '@/composables/useMenuPermissions'
 import { Button } from '@/Components/ui/button'
 import { Input } from '@/Components/ui/input'
 import { Label } from '@/Components/ui/label'
@@ -14,6 +15,8 @@ import { Plus, Pencil, Trash2 } from 'lucide-vue-next'
 
 const props = defineProps({ taxas: Array })
 
+const { can } = useMenuPermissions('configuracoes')
+
 const showCreate = ref(false)
 const showEdit = ref(false)
 const editing = ref(null)
@@ -22,6 +25,7 @@ const createForm = useForm({ nome: '', percentagem: '' })
 const editForm = useForm({ nome: '', percentagem: '', ativo: true })
 
 function openEdit(taxa) {
+    if (!can('update')) return
     editing.value = taxa
     editForm.nome = taxa.nome
     editForm.percentagem = taxa.percentagem
@@ -30,18 +34,21 @@ function openEdit(taxa) {
 }
 
 function submitCreate() {
+    if (!can('create')) return
     createForm.post('/configuracoes/iva', {
         onSuccess: () => { showCreate.value = false; createForm.reset() }
     })
 }
 
 function submitEdit() {
+    if (!can('update')) return
     editForm.put(`/configuracoes/iva/${editing.value.id}`, {
         onSuccess: () => { showEdit.value = false }
     })
 }
 
 function destroy(taxa) {
+    if (!can('delete')) return
     if (confirm(`Eliminar "${taxa.nome}"?`)) {
         useForm({}).delete(`/configuracoes/iva/${taxa.id}`)
     }
@@ -55,7 +62,7 @@ function destroy(taxa) {
         </template>
 
         <div class="space-y-4">
-            <div class="flex justify-end">
+            <div v-if="can('create')" class="flex justify-end">
                 <Dialog v-model:open="showCreate">
                     <DialogTrigger as-child>
                         <Button size="sm" class="gap-2">
@@ -85,8 +92,8 @@ function destroy(taxa) {
                 </Dialog>
             </div>
 
-            <div class="rounded-lg border bg-card">
-                <table class="w-full text-sm">
+            <div class="w-full overflow-x-auto rounded-lg border bg-card">
+                <table class="w-full text-sm min-w-max">
                     <thead class="border-b bg-muted/50">
                         <tr>
                             <th class="px-4 py-3 text-left font-medium text-muted-foreground">Nome</th>
@@ -111,10 +118,10 @@ function destroy(taxa) {
                             </td>
                             <td class="px-4 py-3 text-right">
                                 <div class="flex justify-end gap-2">
-                                    <Button size="icon" variant="ghost" @click="openEdit(taxa)">
+                                    <Button v-if="can('update')" size="icon" variant="ghost" @click="openEdit(taxa)">
                                         <Pencil class="w-4 h-4" />
                                     </Button>
-                                    <Button size="icon" variant="ghost" class="text-destructive hover:text-destructive" @click="destroy(taxa)">
+                                    <Button v-if="can('delete')" size="icon" variant="ghost" class="text-destructive hover:text-destructive" @click="destroy(taxa)">
                                         <Trash2 class="w-4 h-4" />
                                     </Button>
                                 </div>
@@ -125,7 +132,7 @@ function destroy(taxa) {
             </div>
         </div>
 
-        <Dialog v-model:open="showEdit">
+        <Dialog v-if="can('update')" v-model:open="showEdit">
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>Editar Taxa de IVA</DialogTitle>

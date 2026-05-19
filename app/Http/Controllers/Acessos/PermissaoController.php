@@ -3,7 +3,9 @@ namespace App\Http\Controllers\Acessos;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Inertia\Inertia;
+use Spatie\Permission\PermissionRegistrar;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
 
@@ -56,16 +58,29 @@ class PermissaoController extends Controller
         $request->validate([
             'name'        => ['required', 'string', 'max:255', 'unique:roles,name'],
             'permissions' => ['array'],
+            'permissions.*' => ['string'],
         ]);
 
-        $role = Role::create(['name' => $request->name, 'guard_name' => 'web']);
+        $payload = ['name' => $request->name, 'guard_name' => 'web'];
+        if (Schema::hasColumn('roles', 'ativo')) {
+            $payload['ativo'] = $request->boolean('ativo', true);
+        }
 
-        if ($request->permissions) {
-            foreach ($request->permissions as $perm) {
+        $role = Role::create($payload);
+
+        $permissions = collect($request->input('permissions', []))
+            ->filter(fn($perm) => is_string($perm) && $perm !== '')
+            ->values()
+            ->all();
+
+        if (!empty($permissions)) {
+            foreach ($permissions as $perm) {
                 Permission::firstOrCreate(['name' => $perm, 'guard_name' => 'web']);
             }
-            $role->syncPermissions($request->permissions);
+            $role->syncPermissions($permissions);
         }
+
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
 
         return back();
     }
@@ -75,19 +90,31 @@ class PermissaoController extends Controller
         $request->validate([
             'name'        => ['required', 'string', 'max:255', 'unique:roles,name,' . $role->id],
             'permissions' => ['array'],
+            'permissions.*' => ['string'],
             'ativo'       => ['boolean'],
         ]);
 
-        $role->update(['name' => $request->name]);
+        $updatePayload = ['name' => $request->name];
+        if (Schema::hasColumn('roles', 'ativo')) {
+            $updatePayload['ativo'] = $request->boolean('ativo', true);
+        }
+        $role->update($updatePayload);
 
-        if ($request->permissions) {
-            foreach ($request->permissions as $perm) {
+        $permissions = collect($request->input('permissions', []))
+            ->filter(fn($perm) => is_string($perm) && $perm !== '')
+            ->values()
+            ->all();
+
+        if (!empty($permissions)) {
+            foreach ($permissions as $perm) {
                 Permission::firstOrCreate(['name' => $perm, 'guard_name' => 'web']);
             }
-            $role->syncPermissions($request->permissions);
+            $role->syncPermissions($permissions);
         } else {
             $role->syncPermissions([]);
         }
+
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
 
         return back();
     }
@@ -95,6 +122,8 @@ class PermissaoController extends Controller
     public function destroy(Role $role)
     {
         $role->delete();
+
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
         return back();
     }
 }

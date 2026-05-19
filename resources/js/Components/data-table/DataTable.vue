@@ -25,9 +25,9 @@ const props = defineProps({
 </script>
 
 <template>
-    <div class="rounded-lg border bg-card">
+    <div class="overflow-hidden rounded-2xl border border-border/70 bg-card/95 shadow-sm">
         <Table>
-            <TableHeader class="border-b bg-muted/50">
+            <TableHeader>
                 <TableRow>
                     <TableHead
                         v-for="column in columns"
@@ -50,7 +50,7 @@ const props = defineProps({
                 <TableRow
                     v-for="row in data"
                     :key="row.id"
-                    class="border-b last:border-0 hover:bg-muted/30"
+                    class="border-b last:border-0 hover:bg-muted/35"
                 >
                     <TableCell
                         v-for="column in columns"

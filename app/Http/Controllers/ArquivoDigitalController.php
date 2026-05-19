@@ -41,7 +41,7 @@ class ArquivoDigitalController extends Controller
         ]);
 
         $file = $request->file('ficheiro');
-        $path = $file->store('arquivo', 'private');
+        $path = $file->store('arquivo', 'local');
 
         ArquivoDigital::create([
             'nome'        => $request->nome,
@@ -58,8 +58,8 @@ class ArquivoDigitalController extends Controller
 
     public function download(ArquivoDigital $arquivoDigital)
     {
-        abort_unless(Storage::disk('private')->exists($arquivoDigital->ficheiro), 404);
-        return Storage::disk('private')->download(
+        abort_unless(Storage::disk('local')->exists($arquivoDigital->ficheiro), 404);
+        return Storage::disk('local')->download(
             $arquivoDigital->ficheiro,
             $arquivoDigital->nome
         );
@@ -67,7 +67,7 @@ class ArquivoDigitalController extends Controller
 
     public function destroy(ArquivoDigital $arquivoDigital)
     {
-        Storage::disk('private')->delete($arquivoDigital->ficheiro);
+        Storage::disk('local')->delete($arquivoDigital->ficheiro);
         $arquivoDigital->delete();
         return back();
     }
