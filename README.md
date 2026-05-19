@@ -1,66 +1,137 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Gestão - Sistema de Gestão Empresarial
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Sistema completo de gestão empresarial desenvolvido com **Laravel 11**, **Vue 3** (Inertia.js) e **Tailwind CSS**.
 
-## About Laravel
+## Funcionalidades
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- **Contactos**: Gestão completa de contactos com entidades associadas
+- **Entidades**: Registos de empresas/organizações com pesquisa VIES integrada
+- **Artigos**: Catálogo de produtos/serviços
+- **Propostas**: Geração de propostas comerciais com PDF
+- **Encomendas**: Gestão de encomendas de clientes e fornecedores
+- **Ordens de Trabalho**: Controlo de projetos e tarefas
+- **Calendário**: Agenda de eventos e ações
+- **Arquivos**: Gestão de ficheiros digitais associados
+- **Módulo Financeiro**: Gestão de faturas, contas correntes e pagamentos
+- **Activity Log**: Registo automático de todas as atividades do sistema
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Tecnologias
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- **Backend**: Laravel 11, PHP 8.2+
+- **Frontend**: Vue 3, Inertia.js, Tailwind CSS
+- **Base de Dados**: MySQL/MariaDB
+- **Build**: Vite, npm
+- **Autenticação**: Laravel Fortify
+- **Autorização**: Spatie Permissions
 
-## Learning Laravel
+## Instalação
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+### Pré-requisitos
+- PHP 8.2+
+- Composer
+- Node.js 18+
+- npm ou yarn
+- MySQL/MariaDB
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+### Passos
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+```bash
+# Clonar repositório
+git clone https://github.com/GustavoRodrigues-Inovcorp/gestao.git
+cd gestao
 
-## Laravel Sponsors
+# Instalar dependências PHP
+composer install
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+# Instalar dependências Node.js
+npm install
 
-### Premium Partners
+# Copiar ficheiro de ambiente
+cp .env.example .env
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[WebReinvent](https://webreinvent.com/)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Jump24](https://jump24.co.uk)**
-- **[Redberry](https://redberry.international/laravel/)**
-- **[Active Logic](https://activelogic.com)**
-- **[byte5](https://byte5.de)**
-- **[OP.GG](https://op.gg)**
+# Gerar chave da aplicação
+php artisan key:generate
 
-## Contributing
+# Configurar base de dados no .env
+# DATABASE_URL=mysql://user:password@localhost:3306/gestao
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+# Executar migrações
+php artisan migrate
 
-## Code of Conduct
+# Compilar assets
+npm run build
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+## Desenvolvimento
 
-## Security Vulnerabilities
+```bash
+# Iniciar servidor de desenvolvimento (2 terminais)
+php artisan serve
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+# Terminal 2: Watch assets
+npm run dev
+```
 
-## License
+Aceder em: `http://localhost:8000`
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+## Estrutura do Projeto
+
+```
+├── app/
+│   ├── Actions/          # Ações (Fortify)
+│   ├── Controllers/      # Controladores
+│   ├── Helpers/          # Funções auxiliares
+│   ├── Listeners/        # Event Listeners
+│   ├── Mail/             # Classes de email
+│   ├── Models/           # Modelos Eloquent
+│   ├── Providers/        # Service Providers
+│   └── Services/         # Serviços
+├── resources/
+│   ├── js/               # Componentes Vue
+│   ├── views/            # Templates Blade
+│   └── css/              # Estilos Tailwind
+├── routes/               # Rotas (web, api, auth)
+├── database/
+│   ├── migrations/       # Migrações
+│   └── seeders/          # Seeders
+├── tests/                # Testes unitários/feature
+└── storage/              # Ficheiros gerados
+```
+
+## Scripts Úteis
+
+```bash
+# Testes
+php artisan test
+
+# Migrações
+php artisan migrate              # Executar
+php artisan migrate:rollback     # Reverter última
+php artisan migrate:refresh      # Resetar todas
+
+# Cache
+php artisan cache:clear
+php artisan config:cache
+
+# Build production
+npm run build
+php artisan optimize
+```
+
+## Permissões e Roles
+
+O sistema utiliza **Spatie Permissions** para controlo de acesso baseado em roles e permissões.
+
+## Logs
+
+Logs de atividades salvos em:
+- `storage/logs/` — logs da aplicação
+- ActivityLog — tabela de atividades registadas
+
+## Suporte
+
+Para questões ou problemas, consulte a documentação de [Laravel](https://laravel.com/docs) e [Inertia.js](https://inertiajs.com).
+
+## Licença
+
+MIT License © 2026
