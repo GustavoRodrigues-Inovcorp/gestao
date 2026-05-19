@@ -12,6 +12,8 @@ class ComprovativoPagamentoMail extends Mailable
 {
     use SerializesModels;
 
+    public int $tries = 1;
+
     public function __construct(
         public FaturaFornecedor $fatura,
         public ?string $comprovativoPath = null,
