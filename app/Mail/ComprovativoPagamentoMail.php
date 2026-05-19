@@ -2,17 +2,15 @@
 namespace App\Mail;
 
 use App\Models\FaturaFornecedor;
-use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Mail\Mailables\Attachment;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Contracts\Queue\ShouldQueue;
 
-class ComprovativoPagamentoMail extends Mailable implements ShouldQueue
+class ComprovativoPagamentoMail extends Mailable
 {
-    use Queueable, SerializesModels;
+    use SerializesModels;
 
     public function __construct(
         public FaturaFornecedor $fatura,

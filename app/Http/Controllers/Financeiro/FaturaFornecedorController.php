@@ -139,9 +139,19 @@ class FaturaFornecedorController extends Controller
         $faturaFornecedor->load('fornecedor');
 
         if ($faturaFornecedor->fornecedor->email) {
-            // Queue em vez de send
-            Mail::to($faturaFornecedor->fornecedor->email)
-                ->queue(new ComprovativoPagamentoMail($faturaFornecedor, $path));
+            try {
+                Mail::to($faturaFornecedor->fornecedor->email)
+                    ->send(new ComprovativoPagamentoMail($faturaFornecedor, $path));
+            } catch (\Throwable $e) {
+                report($e);
+
+                LogHelper::log(
+                    'Faturas Fornecedor',
+                    "Falhou envio de comprovativo da fatura Nº {$faturaFornecedor->numero}: " . $e->getMessage()
+                );
+
+                return back()->with('error', 'O comprovativo foi guardado, mas não foi possível enviar o email.');
+            }
         }
 
         LogHelper::log('Faturas Fornecedor', "Enviou comprovativo fatura Nº {$faturaFornecedor->numero}");
@@ -151,13 +161,13 @@ class FaturaFornecedorController extends Controller
 
     public function documento(FaturaFornecedor $faturaFornecedor)
     {
-        abort_unless($faturaFornecedor->documento, 404);
+        abort_unless(!empty($faturaFornecedor->documento), 404);
         return response()->file(storage_path('app/private/' . $faturaFornecedor->documento));
     }
 
     public function comprovativo(FaturaFornecedor $faturaFornecedor)
     {
-        abort_unless($faturaFornecedor->comprovativo, 404);
+        abort_unless(!empty($faturaFornecedor->comprovativo), 404);
         return response()->file(storage_path('app/private/' . $faturaFornecedor->comprovativo));
     }
 }
