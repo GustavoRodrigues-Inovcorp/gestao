@@ -18,8 +18,8 @@ class BillingController extends Controller
         $limites = $this->service->verificarLimites($tenant);
 
         return Inertia::render('Billing/Index', [
-            'planos'    => Plano::where('ativo', true)->orderBy('ordem')->get(),
-            'subscricao' => $subscricao ? [
+            'planos'              => Plano::where('ativo', true)->orderBy('ordem')->get(),
+            'subscricao'          => $subscricao ? [
                 'id'              => $subscricao->id,
                 'estado'          => $subscricao->estado,
                 'ciclo'           => $subscricao->ciclo,

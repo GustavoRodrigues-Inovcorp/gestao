@@ -6,15 +6,7 @@ import { Button } from '@/Components/ui/button'
 import { Input } from '@/Components/ui/input'
 import { Label } from '@/Components/ui/label'
 import { Badge } from '@/Components/ui/badge'
-import { Check, Building2, Shield, ArrowRight, Trash2, Pencil } from 'lucide-vue-next'
-import {
-  Dialog, DialogContent, DialogHeader,
-  DialogTitle, DialogTrigger, DialogFooter,
-} from '@/Components/ui/dialog'
-import {
-  Select, SelectContent, SelectItem,
-  SelectTrigger, SelectValue,
-} from '@/Components/ui/select'
+import { Check, Building2, Shield, ArrowRight } from 'lucide-vue-next'
 
 const page = usePage()
 const tenantAtual = computed(() => page.props.tenant_atual)
@@ -30,10 +22,6 @@ const logoPreview = ref(null)
 const inviteForm = useForm({ })
 const inviteDraft = ref('')
 const inviteEmails = ref([])
-
-const showEditUser = ref(false)
-const editingUser = ref(null)
-const editForm = useForm({ name: '', email: '', phone: '', active: true, role: '' })
 
 function addInviteEmails() {
   const emails = inviteDraft.value
@@ -89,38 +77,6 @@ function inviteUsers() {
         router.reload({ only: ['tenant_users'] })
       },
     })
-}
-
-function removeTenantUser(user) {
-  if (!tenantAtual.value?.id) return
-  if (!confirm(`Remover ${user.name} deste workspace?`)) return
-
-  router.delete(`/tenants/${tenantAtual.value.id}/users/${user.id}`, {
-    preserveScroll: true,
-    onSuccess: () => {
-      router.reload({ only: ['tenant_users'] })
-    },
-  })
-}
-
-function openEditUser(user) {
-  editingUser.value = user
-  editForm.name = user.name
-  editForm.email = user.email
-  editForm.phone = user.phone ?? ''
-  editForm.active = user.active ?? true
-  editForm.role = user.role ?? ''
-  showEditUser.value = true
-}
-
-function submitEditUser() {
-  if (!editingUser.value) return
-  editForm.put(`/acessos/utilizadores/${editingUser.value.id}`, {
-    onSuccess: () => {
-      showEditUser.value = false
-      router.reload({ only: ['tenant_users'] })
-    }
-  })
 }
 
 // Nota: as permissões iniciais foram removidas do onboarding.
@@ -231,15 +187,7 @@ function finish() {
                         <p class="font-medium truncate">{{ user.name }}</p>
                         <p class="text-xs text-muted-foreground truncate">{{ user.email }}</p>
                       </div>
-                      <div class="flex items-center gap-2">
-                        <Badge variant="secondary">member</Badge>
-                        <Button type="button" size="icon" variant="ghost" class="h-8 w-8" @click.prevent="openEditUser(user)">
-                          <Pencil class="h-4 w-4" />
-                        </Button>
-                        <Button type="button" size="icon" variant="ghost" class="h-8 w-8 text-destructive hover:text-destructive" @click="removeTenantUser(user)">
-                          <Trash2 class="h-4 w-4" />
-                        </Button>
-                      </div>
+                      <Badge variant="secondary">{{ user.role ?? 'member' }}</Badge>
                     </div>
                   </div>
                   <p v-else class="text-xs text-muted-foreground">Ainda não há utilizadores associados a este workspace.</p>
@@ -279,47 +227,5 @@ function finish() {
         </div>
       </div>
     </div>
-
-    <Dialog v-model:open="showEditUser">
-      <DialogContent class="max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Editar Utilizador</DialogTitle>
-        </DialogHeader>
-        <div class="space-y-3 py-2">
-          <div class="space-y-1">
-            <Label>Nome *</Label>
-            <Input v-model="editForm.name" />
-          </div>
-          <div class="space-y-1">
-            <Label>Email *</Label>
-            <Input v-model="editForm.email" type="email" />
-          </div>
-          <div class="space-y-1">
-            <Label>Telemóvel</Label>
-            <Input v-model="editForm.phone" />
-          </div>
-          <div class="space-y-1">
-            <Label>Grupo de Permissões</Label>
-            <Select v-model="editForm.role">
-              <SelectTrigger>
-                <SelectValue placeholder="Selecionar grupo..." />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="admin">admin</SelectItem>
-                <SelectItem value="member">member</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div class="flex items-center gap-2">
-            <input type="checkbox" v-model="editForm.active" id="active" class="rounded" />
-            <Label for="active">Ativo</Label>
-          </div>
-        </div>
-        <DialogFooter>
-          <Button @click="submitEditUser" :disabled="editForm.processing">Guardar</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-
   </AppLayout>
 </template>

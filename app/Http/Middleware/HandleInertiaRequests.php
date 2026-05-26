@@ -42,16 +42,6 @@ class HandleInertiaRequests extends Middleware
                     'ativo' => session('tenant_id') == $t->id,
                 ])
                 : [],
-            'tenant_users' => fn() => $tenant
-                ? $tenant->users()->with('roles')->get()->map(fn($u) => [
-                    'id'    => $u->id,
-                    'name'  => $u->name,
-                    'email' => $u->email,
-                    'phone' => $u->phone ?? null,
-                    'active'=> $u->active ?? true,
-                    'role'  => $u->roles->first()?->name ?? null,
-                ])
-                : [],
         ];
     }
 }
