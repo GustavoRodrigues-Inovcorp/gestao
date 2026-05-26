@@ -12,13 +12,19 @@ const page = usePage()
 const empresa = computed(() => page.props.empresa)
 const currentUrl = computed(() => page.url)
 const permissions = computed(() => page.props.auth?.permissions ?? [])
+const roles = computed(() => page.props.auth?.roles ?? [])
+const isAdmin = computed(() => Boolean(page.props.auth?.is_admin) || roles.value.includes('admin') || roles.value.includes('Administrador'))
 const collapsed = ref(false)
 const logoUrl = computed(() => {
     if (!empresa.value?.logotipo) return ''
     return `/empresa/logotipo?v=${empresa.value?.updated_at ?? ''}`
 })
+const tenantAtual = computed(() => page.props.tenant_atual)
+const workspaceName = computed(() => empresa.value?.nome ?? tenantAtual.value?.nome ?? 'Workspace')
+const workspaceLogo = computed(() => empresa.value?.logotipo)
 
 function can(menuKey) {
+    if (isAdmin.value) return true
     return permissions.value.includes(`${menuKey}.read`)
 }
 
@@ -100,7 +106,7 @@ function isActive(href) {
             <div class="flex min-w-0 items-center gap-2">
                 <div class="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-primary">
                     <img
-                        v-if="empresa?.logotipo"
+                        v-if="workspaceLogo"
                         :src="logoUrl"
                         alt="Logo"
                         class="w-full h-full object-cover"
@@ -109,7 +115,7 @@ function isActive(href) {
                 </div>
                 <div v-if="!collapsed" class="min-w-0">
                     <div class="text-[10px] uppercase tracking-[0.24em] text-sidebar-foreground/45">Workspace</div>
-                    <span class="block truncate text-sm font-semibold text-sidebar-foreground">{{ empresa?.nome ?? 'Base' }}</span>
+                    <span class="block truncate text-sm font-semibold text-sidebar-foreground">{{ workspaceName }}</span>
                 </div>
             </div>
             <button

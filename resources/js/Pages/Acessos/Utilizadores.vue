@@ -109,6 +109,9 @@ function viewFields(u) {
                         <DialogHeader>
                             <DialogTitle>Novo Utilizador</DialogTitle>
                         </DialogHeader>
+                        <p v-if="createForm.errors.limite" class="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+                            {{ createForm.errors.limite }}
+                        </p>
                         <div class="space-y-3 py-2">
                             <div class="space-y-1">
                                 <Label>Nome *</Label>

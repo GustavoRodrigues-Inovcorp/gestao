@@ -114,6 +114,9 @@ function viewFields(e) {
                         <DialogHeader>
                             <DialogTitle>Novo Cliente — Nº {{ proximoNumero }}</DialogTitle>
                         </DialogHeader>
+                        <p v-if="createForm.errors.limite" class="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+                            {{ createForm.errors.limite }}
+                        </p>
                         <EntidadeForm :form="createForm" :paises="paises" :is-cliente="true" />
                         <DialogFooter class="mt-4">
                             <Button @click="submitCreate" :disabled="createForm.processing">Guardar</Button>

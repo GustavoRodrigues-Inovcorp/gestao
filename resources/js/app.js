@@ -6,10 +6,16 @@ import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createApp, h } from 'vue';
 import { ZiggyVue } from '../../vendor/tightenco/ziggy';
 
-const appName = document.title || import.meta.env.VITE_APP_NAME || 'Laravel';
+const getWorkspaceName = () => document.querySelector('meta[name="workspace-name"]')?.content
+    || document.title
+    || import.meta.env.VITE_APP_NAME
+    || 'Laravel';
 
 createInertiaApp({
-    title: (title) => `${title} - ${appName}`,
+    title: (title) => {
+        const workspaceName = getWorkspaceName();
+        return title ? `${title} - ${workspaceName}` : workspaceName;
+    },
     resolve: (name) =>
         resolvePageComponent(
             `./Pages/${name}.vue`,

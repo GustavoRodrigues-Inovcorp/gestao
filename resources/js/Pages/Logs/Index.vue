@@ -15,6 +15,7 @@ const filtered = computed(() => {
         l.utilizador?.toLowerCase().includes(q) ||
         l.acao?.toLowerCase().includes(q) ||
         l.menu?.toLowerCase().includes(q) ||
+        l.detalhes?.toLowerCase().includes(q) ||
         l.ip?.toLowerCase().includes(q)
     )
 })
@@ -41,13 +42,14 @@ const filtered = computed(() => {
                             <th class="px-4 py-3 text-left font-medium text-muted-foreground">Utilizador</th>
                             <th class="px-4 py-3 text-left font-medium text-muted-foreground">Menu</th>
                             <th class="px-4 py-3 text-left font-medium text-muted-foreground">Ação</th>
+                            <th class="px-4 py-3 text-left font-medium text-muted-foreground">Detalhes</th>
                             <th class="px-4 py-3 text-left font-medium text-muted-foreground">Dispositivo</th>
                             <th class="px-4 py-3 text-left font-medium text-muted-foreground">IP</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr v-if="filtered.length === 0">
-                            <td colspan="7" class="px-4 py-8 text-center text-muted-foreground">
+                            <td colspan="8" class="px-4 py-8 text-center text-muted-foreground">
                                 Nenhum log encontrado.
                             </td>
                         </tr>
@@ -57,6 +59,7 @@ const filtered = computed(() => {
                             <td class="px-4 py-3 font-medium">{{ log.utilizador }}</td>
                             <td class="px-4 py-3 text-muted-foreground">{{ log.menu }}</td>
                             <td class="px-4 py-3">{{ log.acao }}</td>
+                            <td class="px-4 py-3 text-muted-foreground max-w-[380px] truncate">{{ log.detalhes || '—' }}</td>
                             <td class="px-4 py-3 text-xs text-muted-foreground max-w-xs truncate">{{ log.dispositivo }}</td>
                             <td class="px-4 py-3 font-mono text-xs text-muted-foreground">{{ log.ip }}</td>
                         </tr>

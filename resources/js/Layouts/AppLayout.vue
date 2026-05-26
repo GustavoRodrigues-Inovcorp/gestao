@@ -1,68 +1,149 @@
 <script setup>
-import { computed } from 'vue'
-import { usePage, Link } from '@inertiajs/vue3'
+import { computed, watchEffect, onMounted, nextTick } from 'vue'
+import { Head, usePage, Link, router } from '@inertiajs/vue3'
 import { AppSidebar } from '@/Components/ui/sidebar'
 import { useDarkMode } from '@/composables/useDarkMode'
-import { Bell, User, LogOut, ChevronDown, Sun, Moon } from 'lucide-vue-next'
+import { Sun, Moon, User, LogOut, ChevronDown, Plus, Building2, Check, Landmark } from 'lucide-vue-next'
 import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
+    DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+    DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuLabel,
 } from '@/Components/ui/dropdown-menu'
 
 const page = usePage()
 const user = computed(() => page.props.auth?.user)
 const { isDark } = useDarkMode()
+const tenants = computed(() => page.props.tenants ?? [])
+const tenantAtual = computed(() => page.props.tenant_atual)
+const workspaceBrand = computed(() => page.props.empresa?.nome ?? tenantAtual.value?.nome ?? 'Workspace')
+
+function switchTenant(tenantId) {
+    router.post(`/tenants/${tenantId}/switch`)
+}
+
+async function updateBranding() {
+    // Aguarda que outras atualizações do DOM/Inertia terminem
+    await nextTick()
+
+    // Atualiza title: substitui o último segmento após ' - ' pelo workspaceBrand
+    const current = document.title || ''
+    if (current.includes(' - ')) {
+        const parts = current.split(' - ')
+        parts[parts.length - 1] = workspaceBrand.value
+        document.title = parts.join(' - ')
+    } else {
+        document.title = workspaceBrand.value
+    }
+
+    // Atualiza favicon (mantém comportamento anterior)
+    const empresa = page.props.empresa
+    const logoUrl = empresa?.logotipo ? `/empresa/logotipo?v=${empresa.updated_at ?? ''}` : '/favicon.ico'
+    let link = document.querySelector("link[rel*='icon']")
+    if (!link) {
+        link = document.createElement('link')
+        link.setAttribute('rel', 'icon')
+        document.head.appendChild(link)
+    }
+    if (link.getAttribute('href') !== logoUrl) {
+        link.setAttribute('href', logoUrl)
+    }
+}
+
+onMounted(() => {
+    updateBranding()
+})
+
+watchEffect(() => {
+    // watchEffect irá reagir a todas as dependências lidas dentro de updateBranding
+    updateBranding()
+})
 </script>
 
 <template>
-    <div class="relative flex h-screen overflow-hidden bg-background text-foreground">
-        <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.08),transparent_32%),radial-gradient(circle_at_bottom_right,rgba(15,23,42,0.06),transparent_28%)] dark:bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.12),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(255,255,255,0.03),transparent_24%)]"></div>
-
+    <div class="flex h-screen bg-background overflow-hidden">
+        <Head>
+            <meta name="workspace-name" :content="workspaceBrand" />
+        </Head>
         <AppSidebar />
 
-        <div class="relative z-10 flex min-w-0 flex-1 flex-col overflow-hidden">
-            <header class="sticky top-0 z-20 flex h-16 shrink-0 items-center justify-between border-b border-border/60 bg-background/80 px-4 shadow-sm backdrop-blur-xl sm:px-6">
-                <div class="flex min-w-0 items-center gap-3">
+        <div class="flex flex-col flex-1 overflow-hidden">
+            <header class="h-16 border-b border-border bg-background flex items-center justify-between px-6 shrink-0">
+                <div class="flex items-center gap-2">
                     <slot name="header">
-                        <div class="flex flex-col gap-0.5">
-                            <span class="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Workspace</span>
-                            <h1 class="text-sm font-semibold text-foreground">Dashboard</h1>
-                        </div>
+                        <h1 class="text-sm font-semibold text-foreground">Dashboard</h1>
                     </slot>
                 </div>
 
                 <div class="flex items-center gap-3">
-                    <button
-                        @click="isDark = !isDark"
-                        class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border/70 bg-background/70 text-muted-foreground shadow-sm transition-colors hover:bg-accent hover:text-foreground"
-                    >
+                    <!-- Seletor de Tenant — mostra nome do tenant ativo -->
+                    <DropdownMenu>
+                        <DropdownMenuTrigger class="flex items-center gap-2 px-3 py-1.5 rounded-md border hover:bg-accent text-sm transition-colors">
+                            <Building2 class="w-4 h-4 text-muted-foreground" />
+                            <span class="font-medium max-w-[140px] truncate">{{ workspaceBrand }}</span>
+                            <ChevronDown class="w-3.5 h-3.5 text-muted-foreground" />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" class="w-56">
+                            <DropdownMenuLabel class="text-xs text-muted-foreground font-normal">
+                                Workspaces
+                            </DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                                v-for="tenant in tenants"
+                                :key="tenant.id"
+                                @click="!tenant.ativo && switchTenant(tenant.id)"
+                                :class="tenant.ativo ? 'cursor-default opacity-60' : 'cursor-pointer'"
+                            >
+                                <div class="flex items-center gap-2 w-full">
+                                    <Building2 class="w-4 h-4 shrink-0" />
+                                    <span class="flex-1 truncate text-sm">{{ tenant.nome }}</span>
+                                    <Check v-if="tenant.ativo" class="w-3.5 h-3.5 text-primary shrink-0" />
+                                </div>
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem as-child>
+                                <Link href="/tenants" class="flex items-center gap-2 cursor-pointer text-sm">
+                                    Gerir Workspaces
+                                </Link>
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+
+                    <!-- Dark Mode -->
+                    <button @click="isDark = !isDark" class="p-2 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors">
                         <Sun v-if="isDark" class="w-4 h-4" />
                         <Moon v-else class="w-4 h-4" />
                     </button>
 
+                    <!-- User Menu -->
                     <DropdownMenu>
-                        <DropdownMenuTrigger class="flex items-center gap-2 rounded-full border border-border/70 bg-background/70 px-2.5 py-1.5 text-sm shadow-sm transition-colors hover:bg-accent/80">
-                            <div class="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground shadow-sm">
+                        <DropdownMenuTrigger class="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-accent text-sm transition-colors">
+                            <div class="w-7 h-7 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-semibold shrink-0">
                                 {{ user?.name?.charAt(0)?.toUpperCase() }}
                             </div>
-                            <span class="hidden max-w-40 truncate font-medium text-foreground md:block">{{ user?.name }}</span>
-                            <ChevronDown class="h-3.5 w-3.5 text-muted-foreground" />
+                            <span class="text-foreground font-medium hidden md:block max-w-[120px] truncate">{{ user?.name }}</span>
+                            <ChevronDown class="w-3.5 h-3.5 text-muted-foreground" />
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" class="w-52 rounded-xl border border-border/70 bg-popover p-1 shadow-xl backdrop-blur-xl">
+                        <DropdownMenuContent align="end" class="w-48">
+                            <DropdownMenuLabel class="font-normal">
+                                <p class="text-xs text-muted-foreground truncate">{{ user?.email }}</p>
+                            </DropdownMenuLabel>
+                            <DropdownMenuSeparator />
                             <DropdownMenuItem as-child>
-                                <Link href="/profile" class="flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2">
-                                    <User class="h-4 w-4" />
+                                <Link href="/profile" class="flex items-center gap-2 cursor-pointer">
+                                    <User class="w-4 h-4" />
                                     Perfil
+                                </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem as-child>
+                                <Link href="/billing" class="flex items-center gap-2 cursor-pointer">
+                                    <Landmark class="w-4 h-4" />
+                                    Planos e Subscrição
                                 </Link>
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem as-child>
-                                <Link href="/logout" method="post" as="button" class="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-destructive">
-                                    <LogOut class="h-4 w-4" />
-                                    Sair
+                                <Link href="/logout" method="post" as="button" class="flex items-center gap-2 w-full cursor-pointer text-destructive hover:text-destructive">
+                                    <LogOut class="w-4 h-4" />
+                                    Terminar Sessão
                                 </Link>
                             </DropdownMenuItem>
                         </DropdownMenuContent>
@@ -70,10 +151,8 @@ const { isDark } = useDarkMode()
                 </div>
             </header>
 
-            <main class="flex-1 overflow-y-auto px-4 py-5 sm:px-6 lg:px-8">
-                <div class="mx-auto flex w-full max-w-[1600px] flex-col gap-6">
-                    <slot />
-                </div>
+            <main class="flex-1 overflow-y-auto p-6">
+                <slot />
             </main>
         </div>
     </div>

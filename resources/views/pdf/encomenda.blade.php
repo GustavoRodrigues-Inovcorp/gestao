@@ -4,128 +4,184 @@
     <meta charset="UTF-8">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: DejaVu Sans, sans-serif; font-size: 11px; color: #1a1a1a; }
-        .page { padding: 40px; }
-        .header { display: flex; justify-content: space-between; margin-bottom: 40px; }
-        .logo-area h1 { font-size: 22px; font-weight: 700; color: #111; }
-        .logo-area p { font-size: 10px; color: #666; margin-top: 2px; }
-        .doc-info { text-align: right; }
-        .doc-info .doc-title { font-size: 20px; font-weight: 700; color: #111; text-transform: uppercase; letter-spacing: 2px; }
-        .doc-info .doc-number { font-size: 13px; color: #555; margin-top: 4px; }
-        .parties { display: flex; gap: 40px; margin-bottom: 30px; }
-        .party { flex: 1; }
-        .party-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #999; margin-bottom: 6px; }
-        .party-name { font-size: 13px; font-weight: 700; margin-bottom: 3px; }
-        .party-detail { font-size: 10px; color: #555; line-height: 1.6; }
-        .dates { display: flex; gap: 20px; margin-bottom: 30px; padding: 12px 16px; background: #f8f8f8; border-radius: 6px; }
-        .date-item { flex: 1; }
-        .date-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #999; }
-        .date-value { font-size: 12px; font-weight: 600; margin-top: 2px; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-        thead tr { background: #111; color: #fff; }
-        thead th { padding: 10px 12px; text-align: left; font-size: 10px; font-weight: 600; }
-        tbody tr { border-bottom: 1px solid #eee; }
-        tbody tr:nth-child(even) { background: #fafafa; }
-        tbody td { padding: 9px 12px; font-size: 10px; }
-        .text-right { text-align: right; }
-        .totals { display: flex; justify-content: flex-end; margin-top: 10px; }
-        .totals-box { width: 260px; }
-        .total-row { display: flex; justify-content: space-between; padding: 5px 0; font-size: 11px; border-bottom: 1px solid #eee; }
-        .total-row.grand { font-size: 14px; font-weight: 700; border-bottom: none; padding-top: 10px; }
-        .footer { margin-top: 50px; padding-top: 16px; border-top: 1px solid #eee; text-align: center; font-size: 9px; color: #aaa; }
+        body { font-family: DejaVu Sans, sans-serif; font-size: 10px; color: #1a1a1a; }
+        .page { padding: 35px 40px; }
+        .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; }
+        .logo-box { width: 80px; height: 80px; margin-bottom: 6px; }
+        .logo-box img { width: 100%; height: 100%; object-fit: contain; }
+        .logo-nome { font-size: 14px; font-weight: 700; color: #111; text-transform: uppercase; letter-spacing: 1px; }
+        .logo-sub { font-size: 8px; color: #999; text-transform: uppercase; letter-spacing: 2px; margin-top: 2px; }
+        .doc-tipo { font-size: 18px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; color: #111; text-align: right; }
+        .doc-numero { font-size: 13px; color: #555; margin-top: 4px; text-align: right; }
+        .divider { border: none; border-top: 1px solid #e5e7eb; margin: 16px 0; }
+        .dest-nome { font-size: 12px; font-weight: 700; margin-bottom: 3px; }
+        .dest-detail { font-size: 9px; color: #555; line-height: 1.8; }
+        .info-boxes { display: flex; gap: 0; margin-bottom: 20px; border: 1px solid #e5e7eb; border-radius: 4px; overflow: hidden; }
+        .info-box { flex: 1; padding: 8px 12px; border-right: 1px solid #e5e7eb; }
+        .info-box:last-child { border-right: none; }
+        .info-box-label { font-size: 7.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #9ca3af; margin-bottom: 3px; }
+        .info-box-value { font-size: 10px; font-weight: 600; color: #111; }
+        .lines-table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+        .lines-table thead tr { background: #1a1a1a; color: #fff; }
+        .lines-table thead th { padding: 8px 10px; text-align: left; font-size: 8.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+        .lines-table thead th.right { text-align: right; }
+        .lines-table tbody tr { border-bottom: 1px solid #f3f4f6; }
+        .lines-table tbody tr:nth-child(even) { background: #fafafa; }
+        .lines-table tbody td { padding: 8px 10px; font-size: 9.5px; }
+        .lines-table tbody td.right { text-align: right; }
+        .lines-table tbody td.ref { color: #6b7280; font-size: 8.5px; }
+        .totals-section { display: flex; justify-content: flex-end; margin-top: 6px; }
+        .totals-box { width: 280px; border: 1px solid #e5e7eb; border-radius: 4px; overflow: hidden; }
+        .total-row { display: flex; justify-content: space-between; padding: 6px 12px; font-size: 9.5px; border-bottom: 1px solid #f3f4f6; }
+        .total-row.grand { background: #1a1a1a; color: #fff; font-size: 11px; font-weight: 700; padding: 8px 12px; }
+        .termos { margin-top: 24px; display: flex; gap: 30px; }
+        .termos-title { font-size: 8.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #9ca3af; margin-bottom: 6px; border-bottom: 1px solid #e5e7eb; padding-bottom: 4px; }
+        .termos-item { font-size: 9px; color: #444; line-height: 1.8; }
+        .conta-item { font-size: 8.5px; color: #555; line-height: 1.8; }
+        .footer { margin-top: 30px; padding-top: 12px; border-top: 1px solid #e5e7eb; display: flex; justify-content: space-between; }
+        .footer-left { font-size: 8px; color: #9ca3af; line-height: 1.8; }
+        .footer-right { font-size: 8px; color: #9ca3af; }
     </style>
 </head>
 <body>
 <div class="page">
-    <!-- Cabeçalho do documento com identificação da empresa e do número da encomenda. -->
+
     <div class="header">
-        <div class="logo-area">
-            <h1>{{ $empresa?->nome ?? 'Empresa' }}</h1>
-            <p>{{ $empresa?->nif ? 'NIF: ' . $empresa->nif : '' }}</p>
-            <p>{{ $empresa?->morada }}</p>
-            <p>{{ $empresa?->codigo_postal }} {{ $empresa?->localidade }}</p>
+        <div>
+            @if($empresa?->logotipo)
+                <div class="logo-box">
+                    <img src="{{ storage_path('app/private/' . $empresa->logotipo) }}" alt="Logo" />
+                </div>
+            @endif
+            <div class="logo-nome">{{ $empresa?->nome ?? 'Empresa' }}</div>
+            @if($empresa?->nif)<div class="logo-sub">NIF {{ $empresa->nif }}</div>@endif
         </div>
-        <div class="doc-info">
-            <div class="doc-title">Encomenda</div>
-            <div class="doc-number">Nº {{ str_pad($encomenda->numero, 5, '0', STR_PAD_LEFT) }}</div>
+        <div>
+            <div class="doc-tipo">Encomenda</div>
+            <div class="doc-numero">Nº {{ str_pad($encomenda->numero, 5, '0', STR_PAD_LEFT) }}/{{ date('Y') }}</div>
         </div>
     </div>
 
-    <!-- Bloco com a entidade emissora e o cliente destinatário. -->
-    <div class="parties">
-        <div class="party">
-            <div class="party-label">De</div>
-            <div class="party-name">{{ $empresa?->nome ?? '—' }}</div>
-            <div class="party-detail">
-                {{ $empresa?->morada }}<br>
-                {{ $empresa?->codigo_postal }} {{ $empresa?->localidade }}<br>
-                {{ $empresa?->nif ? 'NIF: ' . $empresa->nif : '' }}
+    <hr class="divider">
+
+    <div style="display: flex; gap: 40px; margin-bottom: 20px;">
+        <div style="flex: 1;">
+            <div style="font-size: 7.5px; font-weight: 700; text-transform: uppercase; color: #9ca3af; margin-bottom: 6px;">De</div>
+            <div class="dest-nome">{{ $empresa?->nome ?? '—' }}</div>
+            <div class="dest-detail">
+                @if($empresa?->morada){{ $empresa->morada }}<br>@endif
+                @if($empresa?->codigo_postal){{ $empresa->codigo_postal }} {{ $empresa?->localidade }}<br>@endif
+                @if($empresa?->nif)NIF: {{ $empresa->nif }}@endif
             </div>
         </div>
-        <div class="party">
-            <div class="party-label">Para</div>
-            <div class="party-name">{{ $encomenda->entidade->nome }}</div>
-            <div class="party-detail">
-                {{ $encomenda->entidade->morada }}<br>
-                {{ $encomenda->entidade->codigo_postal }} {{ $encomenda->entidade->localidade }}<br>
-                {{ $encomenda->entidade->nif ? 'NIF: ' . $encomenda->entidade->nif : '' }}
+        <div style="flex: 1;">
+            <div style="font-size: 7.5px; font-weight: 700; text-transform: uppercase; color: #9ca3af; margin-bottom: 6px;">Para</div>
+            <div class="dest-nome">{{ $encomenda->entidade->nome }}</div>
+            <div class="dest-detail">
+                @if($encomenda->entidade->morada){{ $encomenda->entidade->morada }}<br>@endif
+                @if($encomenda->entidade->codigo_postal){{ $encomenda->entidade->codigo_postal }} {{ $encomenda->entidade->localidade }}<br>@endif
+                @if($encomenda->entidade->nif)NIF: {{ $encomenda->entidade->nif }}@endif
             </div>
         </div>
     </div>
 
-    <!-- Datas principais do documento. -->
-    <div class="dates">
-        <div class="date-item">
-            <div class="date-label">Data</div>
-            <div class="date-value">{{ $encomenda->data?->format('d/m/Y') ?? '—' }}</div>
+    <div class="info-boxes">
+        <div class="info-box">
+            <div class="info-box-label">Nº Encomenda</div>
+            <div class="info-box-value">{{ str_pad($encomenda->numero, 5, '0', STR_PAD_LEFT) }}/{{ date('Y') }}</div>
         </div>
-        <div class="date-item">
-            <div class="date-label">Validade</div>
-            <div class="date-value">{{ $encomenda->validade?->format('d/m/Y') ?? '—' }}</div>
+        <div class="info-box">
+            <div class="info-box-label">Data</div>
+            <div class="info-box-value">{{ $encomenda->data?->format('d/m/Y') ?? '—' }}</div>
         </div>
+        <div class="info-box">
+            <div class="info-box-label">Válido até</div>
+            <div class="info-box-value">{{ $encomenda->validade?->format('d/m/Y') ?? '—' }}</div>
+        </div>
+        @if($encomenda->entidade->nif)
+        <div class="info-box">
+            <div class="info-box-label">NIF Cliente</div>
+            <div class="info-box-value">{{ $encomenda->entidade->nif }}</div>
+        </div>
+        @endif
     </div>
 
-    <!-- Linhas da encomenda com totais por linha. -->
-    <table>
+    <table class="lines-table">
         <thead>
             <tr>
-                <th>Ref.</th>
-                <th>Descrição</th>
-                <th class="text-right">Qtd.</th>
-                <th class="text-right">Preço Unit.</th>
-                <th class="text-right">IVA</th>
-                <th class="text-right">Subtotal</th>
+                <th style="width: 8%;">Ref.</th>
+                <th style="width: 42%;">Descrição</th>
+                <th class="right" style="width: 8%;">Qtd.</th>
+                <th class="right" style="width: 10%;">Un.</th>
+                <th class="right" style="width: 12%;">Preço Unit.</th>
+                <th class="right" style="width: 8%;">IVA</th>
+                <th class="right" style="width: 12%;">Subtotal</th>
             </tr>
         </thead>
         <tbody>
             @foreach($encomenda->linhas as $linha)
             <tr>
-                <td>{{ $linha->referencia ?? '—' }}</td>
+                <td class="ref">{{ $linha->referencia ?? '—' }}</td>
                 <td>{{ $linha->nome }}</td>
-                <td class="text-right">{{ $linha->quantidade }}</td>
-                <td class="text-right">{{ number_format($linha->preco_venda, 2, ',', '.') }} €</td>
-                <td class="text-right">{{ $linha->iva }}%</td>
-                <td class="text-right">{{ number_format($linha->subtotal, 2, ',', '.') }} €</td>
+                <td class="right">{{ $linha->quantidade }}</td>
+                <td class="right">Un</td>
+                <td class="right">{{ number_format($linha->preco_venda, 2, ',', '.') }} €</td>
+                <td class="right">{{ $linha->iva }}%</td>
+                <td class="right">{{ number_format($linha->subtotal, 2, ',', '.') }} €</td>
             </tr>
             @endforeach
         </tbody>
     </table>
 
     @php
-        // Totais agregados para apresentação no fim do documento.
         $subtotalSemIva = $encomenda->linhas->sum('subtotal');
         $totalIva = $encomenda->linhas->sum(fn($l) => $l->subtotal * $l->iva / 100);
         $total = $subtotalSemIva + $totalIva;
     @endphp
-    <div class="totals">
+
+    <div class="totals-section">
         <div class="totals-box">
-            <div class="total-row"><span>Subtotal</span><span>{{ number_format($subtotalSemIva, 2, ',', '.') }} €</span></div>
-            <div class="total-row"><span>IVA</span><span>{{ number_format($totalIva, 2, ',', '.') }} €</span></div>
-            <div class="total-row grand"><span>Total</span><span>{{ number_format($total, 2, ',', '.') }} €</span></div>
+            <div class="total-row">
+                <span>Subtotal sem IVA</span>
+                <span>{{ number_format($subtotalSemIva, 2, ',', '.') }} €</span>
+            </div>
+            @foreach($encomenda->linhas->groupBy('iva') as $taxa => $linhas)
+            <div class="total-row">
+                <span>IVA {{ $taxa }}%</span>
+                <span>{{ number_format($linhas->sum(fn($l) => $l->subtotal * $l->iva / 100), 2, ',', '.') }} €</span>
+            </div>
+            @endforeach
+            <div class="total-row grand">
+                <span>Total com IVA</span>
+                <span>{{ number_format($total, 2, ',', '.') }} €</span>
+            </div>
         </div>
     </div>
 
-    <div class="footer">{{ $empresa?->nome }} &bull; {{ $empresa?->email }} &bull; {{ $empresa?->telefone }}</div>
+    <div class="termos">
+        <div style="flex: 1;">
+            <div class="termos-title">Termos e Condições</div>
+            <div class="termos-item">Este documento não serve de fatura.</div>
+        </div>
+        @if(isset($contas) && count($contas) > 0)
+        <div style="flex: 1;">
+            <div class="termos-title">Dados Bancários</div>
+            @foreach($contas as $conta)
+            <div class="conta-item">IBAN {{ $conta->iban }} ({{ $conta->banco }})</div>
+            @endforeach
+        </div>
+        @endif
+    </div>
+
+    <div class="footer">
+        <div class="footer-left">
+            @if($empresa?->morada){{ $empresa->morada }} · @endif
+            @if($empresa?->codigo_postal){{ $empresa->codigo_postal }} {{ $empresa?->localidade }} · @endif
+            @if($empresa?->nif)NIF {{ $empresa->nif }}@endif
+        </div>
+        <div class="footer-right">Pág. 1</div>
+    </div>
+
 </div>
 </body>
 </html>

@@ -2,8 +2,11 @@
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
     <head>
         @php
-            $empresa = \App\Models\Empresa::first();
-            $appTitle = $empresa?->nome ?? config('app.name', 'Laravel');
+            $tenant = app()->has('current_tenant') ? app('current_tenant') : null;
+            $empresa = $tenant
+                ? \App\Models\Empresa::where('tenant_id', $tenant->id)->first()
+                : \App\Models\Empresa::first();
+            $appTitle = $empresa?->nome ?? $tenant?->nome ?? config('app.name', 'Laravel');
             $faviconUrl = $empresa?->logotipo
                 ? route('empresa.logotipo') . '?v=' . ($empresa?->updated_at?->timestamp ?? now()->timestamp)
                 : asset('favicon.ico');
@@ -13,6 +16,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
 
         <title inertia>{{ $appTitle }}</title>
+        <meta name="workspace-name" content="{{ $appTitle }}">
         <link rel="icon" type="image/*" href="{{ $faviconUrl }}">
 
         <!-- Fonts -->
