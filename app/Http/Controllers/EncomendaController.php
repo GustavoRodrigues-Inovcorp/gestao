@@ -136,9 +136,17 @@ class EncomendaController extends Controller
     {
         $encomenda->load(['entidade', 'linhas.artigo']);
         $empresa = Empresa::first();
+        $contas  = \App\Models\ContaBancaria::where('ativo', true)->get();
+
         LogHelper::log('Encomendas', "Download PDF encomenda Nº {$encomenda->numero}");
-        $pdf = Pdf::loadView('pdf.encomenda', ['encomenda' => $encomenda, 'empresa' => $empresa])->setPaper('a4');
-        return $pdf->download('encomenda-' . $encomenda->numero . '.pdf');
+
+        $pdf = Pdf::loadView('pdf.encomenda', [
+            'encomenda' => $encomenda,
+            'empresa'   => $empresa,
+            'contas'    => $contas,
+        ])->setPaper('a4');
+
+        return $pdf->download('encomenda-' . str_pad($encomenda->numero, 5, '0', STR_PAD_LEFT) . '.pdf');
     }
 
     public function converterParaFornecedor(Encomenda $encomenda)

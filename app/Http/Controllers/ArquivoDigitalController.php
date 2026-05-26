@@ -3,6 +3,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ArquivoDigital;
 use App\Models\Entidade;
+use App\Services\SubscricaoService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
@@ -33,6 +34,11 @@ class ArquivoDigitalController extends Controller
 
     public function store(Request $request)
     {
+        $tenant = app()->has('current_tenant') ? app('current_tenant') : null;
+        if ($tenant) {
+            app(SubscricaoService::class)->validarLimiteCriacao($tenant, 'documentos');
+        }
+
         $request->validate([
             'nome'        => ['required', 'string', 'max:255'],
             'ficheiro'    => ['required', 'file', 'max:20480'],

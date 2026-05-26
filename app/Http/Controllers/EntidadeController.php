@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 use App\Helpers\LogHelper;
 use App\Models\Entidade;
 use App\Models\Pais;
+use App\Services\SubscricaoService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -47,6 +48,11 @@ class EntidadeController extends Controller
             'ativo'         => ['boolean'],
         ]);
 
+        $tenant = app()->has('current_tenant') ? app('current_tenant') : null;
+        if ($tenant && !empty($validated['is_cliente'])) {
+            app(SubscricaoService::class)->validarLimiteCriacao($tenant, 'clientes');
+        }
+
         if (!empty($validated['nif'])) {
             if (Entidade::where('nif', $validated['nif'])->exists()) {
                 return back()->withErrors(['nif' => 'Este NIF já existe.']);
@@ -81,6 +87,15 @@ class EntidadeController extends Controller
             'observacoes'   => ['nullable', 'string'],
             'ativo'         => ['boolean'],
         ]);
+
+        $tenant = app()->has('current_tenant') ? app('current_tenant') : null;
+        $novoEstadoCliente = array_key_exists('is_cliente', $validated)
+            ? (bool) $validated['is_cliente']
+            : $entidade->is_cliente;
+
+        if ($tenant && !$entidade->is_cliente && $novoEstadoCliente) {
+            app(SubscricaoService::class)->validarLimiteCriacao($tenant, 'clientes');
+        }
 
         if (!empty($validated['nif'])) {
             if (Entidade::where('nif', $validated['nif'])->where('id', '!=', $entidade->id)->exists()) {

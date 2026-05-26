@@ -130,13 +130,21 @@ class PropostaController extends Controller
         return back();
     }
 
-    public function pdf(Proposta $proposta)
+   public function pdf(Proposta $proposta)
     {
         $proposta->load(['entidade', 'linhas.artigo']);
         $empresa = Empresa::first();
+        $contas  = \App\Models\ContaBancaria::where('ativo', true)->get();
+
         LogHelper::log('Propostas', "Download PDF proposta Nº {$proposta->numero}");
-        $pdf = Pdf::loadView('pdf.proposta', ['proposta' => $proposta, 'empresa' => $empresa])->setPaper('a4');
-        return $pdf->download('proposta-' . $proposta->numero . '.pdf');
+
+        $pdf = Pdf::loadView('pdf.proposta', [
+            'proposta' => $proposta,
+            'empresa'  => $empresa,
+            'contas'   => $contas,
+        ])->setPaper('a4');
+
+        return $pdf->download('proposta-' . str_pad($proposta->numero, 5, '0', STR_PAD_LEFT) . '.pdf');
     }
 
     public function converter(Proposta $proposta)

@@ -9,6 +9,7 @@ use App\Models\EncomendaFornecedor;
 use App\Models\FaturaFornecedor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
@@ -140,14 +141,23 @@ class FaturaFornecedorController extends Controller
 
         if ($faturaFornecedor->fornecedor->email) {
             try {
-                Mail::to($faturaFornecedor->fornecedor->email)
+                // aumentar timeout de execução e socket para evitar timeout de 30s
+                @set_time_limit(120);
+                @ini_set('default_socket_timeout', '120');
+
+                Log::info('FaturaFornecedorController: iniciando envio de comprovativo', ['fatura_id' => $faturaFornecedor->id, 'to' => $faturaFornecedor->fornecedor->email]);
+
+                Mail::mailer(config('mail.default'))
+                    ->to($faturaFornecedor->fornecedor->email)
                     ->send(new ComprovativoPagamentoMail($faturaFornecedor, $path));
+
+                Log::info('FaturaFornecedorController: envio de comprovativo concluído', ['fatura_id' => $faturaFornecedor->id]);
             } catch (\Throwable $e) {
                 report($e);
 
                 LogHelper::log(
                     'Faturas Fornecedor',
-                    "Falhou envio de comprovativo da fatura Nº {$faturaFornecedor->numero}: " . $e->getMessage()
+                    "Falhou envio de comprovativo da fatura Nº {$faturaFornecedor->numero}: " . $e->getMessage() . "\n" . $e->getTraceAsString()
                 );
 
                 return back()->with('error', 'O comprovativo foi guardado, mas não foi possível enviar o email.');

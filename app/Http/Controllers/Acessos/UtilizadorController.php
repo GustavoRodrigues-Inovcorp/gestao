@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Acessos;
 use App\Helpers\LogHelper;
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\SubscricaoService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
@@ -31,6 +32,11 @@ class UtilizadorController extends Controller
 
     public function store(Request $request)
     {
+        $tenant = app()->has('current_tenant') ? app('current_tenant') : null;
+        if ($tenant) {
+            app(SubscricaoService::class)->validarLimiteCriacao($tenant, 'utilizadores');
+        }
+
         $request->validate([
             'name'     => ['required', 'string', 'max:255'],
             'email'    => ['required', 'email', 'unique:users,email'],
