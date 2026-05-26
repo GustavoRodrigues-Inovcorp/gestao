@@ -304,6 +304,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/tenants/{tenant}/preferences', [TenantController::class, 'preferences'])->name('tenants.preferences');
     Route::post('/tenants/{tenant}/switch', [TenantController::class, 'switch'])->name('tenants.switch');
     Route::delete('/tenants/{tenant}', [TenantController::class, 'destroy'])->name('tenants.destroy');
+    Route::delete('/tenants/{tenant}/users/{user}', [TenantController::class, 'detachUser'])->name('tenants.users.detach');
     
     // Onboarding endpoints for tenant self-service
     Route::post('/tenants/{tenant}/onboarding/invite', [TenantController::class, 'invite'])->name('tenants.onboarding.invite');

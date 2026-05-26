@@ -6,7 +6,7 @@ import { Button } from '@/Components/ui/button'
 import { Input } from '@/Components/ui/input'
 import { Label } from '@/Components/ui/label'
 import { Badge } from '@/Components/ui/badge'
-import { Check, Building2, Shield, ArrowRight } from 'lucide-vue-next'
+import { Check, Building2, Shield, ArrowRight, Trash2 } from 'lucide-vue-next'
 
 const page = usePage()
 const tenantAtual = computed(() => page.props.tenant_atual)
@@ -79,14 +79,25 @@ function inviteUsers() {
     })
 }
 
+function removeTenantUser(user) {
+  if (!tenantAtual.value?.id) return
+  if (!confirm(`Remover ${user.name} deste workspace?`)) return
+
+  router.delete(`/tenants/${tenantAtual.value.id}/users/${user.id}`, {
+    preserveScroll: true,
+    onSuccess: () => {
+      router.reload({ only: ['tenant_users'] })
+    },
+  })
+}
+
 // Nota: as permissões iniciais foram removidas do onboarding.
 // A gestão de permissões continua disponível em Acessos -> Permissões.
 
 // Checklist (simple links to sections)
 const checklist = ref([
   { id: 1, label: 'Configurar dados da empresa', done: false, required: true },
-  { id: 2, label: 'Definir grupos de permissões', done: false, required: false },
-  { id: 3, label: 'Convidar utilizadores', done: false, required: true },
+  { id: 2, label: 'Convidar utilizadores', done: false, required: true },
 ])
 
 const completedChecklist = computed(() => checklist.value.filter(item => item.done).length)
@@ -188,7 +199,12 @@ function finish() {
                         <p class="font-medium truncate">{{ user.name }}</p>
                         <p class="text-xs text-muted-foreground truncate">{{ user.email }}</p>
                       </div>
-                      <Badge variant="secondary">{{ user.role ?? 'member' }}</Badge>
+                      <div class="flex items-center gap-2">
+                        <Badge variant="secondary">member</Badge>
+                        <Button type="button" size="icon" variant="ghost" class="h-8 w-8 text-destructive hover:text-destructive" @click="removeTenantUser(user)">
+                          <Trash2 class="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                   <p v-else class="text-xs text-muted-foreground">Ainda não há utilizadores associados a este workspace.</p>

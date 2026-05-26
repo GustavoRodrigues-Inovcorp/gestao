@@ -2,6 +2,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Tenant;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
@@ -254,6 +255,20 @@ class TenantController extends Controller
         }
 
         return back()->with('success', 'Utilizadores convidados: ' . implode(', ', $attached));
+    }
+
+    public function detachUser(Request $request, Tenant $tenant, User $user)
+    {
+        $currentUser = auth()->user();
+        abort_unless($currentUser->hasAnyRole(['admin', 'Administrator','Administrador']), 403);
+
+        if (!$tenant->users()->where('user_id', $user->id)->exists()) {
+            return back()->withErrors(['user' => 'Utilizador não está associado a este workspace.']);
+        }
+
+        $tenant->users()->detach($user->id);
+
+        return back()->with('success', 'Utilizador removido do workspace.');
     }
 
     /**
