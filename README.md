@@ -2,8 +2,15 @@
 
 Sistema completo de gestão empresarial desenvolvido com **Laravel 11**, **Vue 3** (Inertia.js) e **Tailwind CSS**.
 
+## Estado do Projeto
+
+Este projeto foi concluído e está pronto para uso e manutenção evolutiva. A base funcional está fechada, incluindo gestão de workspaces, onboarding inicial, acessos, faturação, calendários, documentos e módulos operacionais.
+
 ## Funcionalidades
 
+- **Workspaces**: criação, edição, troca e remoção de workspaces com branding por tenant
+- **Onboarding**: configuração inicial do workspace, convite de utilizadores e conclusão guiada
+- **Utilizadores e permissões**: gestão de utilizadores, roles e permissões por área funcional
 - **Contactos**: Gestão completa de contactos com entidades associadas
 - **Entidades**: Registos de empresas/organizações com pesquisa VIES integrada
 - **Artigos**: Catálogo de produtos/serviços
@@ -14,6 +21,15 @@ Sistema completo de gestão empresarial desenvolvido com **Laravel 11**, **Vue 3
 - **Arquivos**: Gestão de ficheiros digitais associados
 - **Módulo Financeiro**: Gestão de faturas, contas correntes e pagamentos
 - **Activity Log**: Registo automático de todas as atividades do sistema
+
+## Módulos Principais
+
+- Gestão multi-workspace com tenant ativo por sessão
+- Branding do workspace com logotipo e nome da empresa
+- Convite e remoção de utilizadores do workspace
+- Área de acessos para gerir utilizadores e permissões
+- Preferências do workspace e configuração inicial centralizada
+- Núcleo operacional com clientes, fornecedores, propostas, encomendas, calendário, arquivo e financeiro
 
 ## Tecnologias
 
@@ -135,3 +151,7 @@ Para questões ou problemas, consulte a documentação de [Laravel](https://lara
 ## Licença
 
 MIT License © 2026
+
+## Nota Final
+
+O foco agora é manutenção, estabilidade e pequenas evoluções pontuais.
