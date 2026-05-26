@@ -19,7 +19,7 @@ const totalSteps = 3
 const empresaForm = useForm({ nome: tenantAtual.value?.nome ?? '', logotipo: null })
 const logoPreview = ref(null)
 
-const inviteForm = useForm({ role: 'member' })
+const inviteForm = useForm({ })
 const inviteDraft = ref('')
 const inviteEmails = ref([])
 
@@ -67,7 +67,7 @@ function saveBranding() {
 function inviteUsers() {
   if (inviteEmails.value.length === 0) return
   inviteForm
-    .transform(() => ({ emails: inviteEmails.value, role: inviteForm.role }))
+    .transform(() => ({ emails: inviteEmails.value }))
     .post(`/tenants/${tenantAtual.value.id}/onboarding/invite`, {
       preserveScroll: true,
       onSuccess: () => {
@@ -210,14 +210,8 @@ function finish() {
                   />
                   <Button variant="outline" type="button" @click="addInviteEmails">Adicionar</Button>
                 </div>
-                <div class="grid gap-2 sm:grid-cols-2">
-                  <div class="space-y-1">
-                    <Label>Função</Label>
-                    <Input v-model="inviteForm.role" placeholder="member" />
-                  </div>
-                  <div class="flex items-end">
-                    <Button class="w-full" @click="inviteUsers" :disabled="inviteForm.processing || inviteEmails.length === 0">Convidar utilizadores</Button>
-                  </div>
+                <div class="flex items-end">
+                  <Button class="w-full" @click="inviteUsers" :disabled="inviteForm.processing || inviteEmails.length === 0">Convidar utilizadores</Button>
                 </div>
               </div>
 
