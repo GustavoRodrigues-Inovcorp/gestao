@@ -1,55 +1,56 @@
 <?php
-
 namespace App\Http\Middleware;
 
 use Illuminate\Http\Request;
 use Inertia\Middleware;
-use App\Models\Empresa;
 
 class HandleInertiaRequests extends Middleware
 {
-    /**
-     * The root template that is loaded on the first page visit.
-     *
-     * @var string
-     */
     protected $rootView = 'app';
 
-    /**
-     * Determine the current asset version.
-     */
     public function version(Request $request): ?string
     {
         return parent::version($request);
     }
 
-    /**
-     * Define the props that are shared by default.
-     *
-     * @return array<string, mixed>
-     */
     public function share(Request $request): array
     {
         $user = $request->user();
+        $tenant = app()->has('current_tenant') ? app('current_tenant') : null;
 
-        $permissions = $user
-            ? $user->getAllPermissions()->pluck('name')->values()->all()
-            : [];
-
-        $roles = $user
-            ? $user->roles->pluck('name')->values()->all()
-            : [];
-        
         return [
             ...parent::share($request),
             'auth' => [
-                'user' => $user,
-                'permissions' => $permissions,
-                'roles' => $roles,
+                'user'     => $user,
+                'roles'    => $user ? $user->getRoleNames() : [],
+                'permissions' => $user ? $user->getAllPermissions()->pluck('name') : [],
+                'is_admin' => $user ? $user->hasAnyRole(['admin', 'Administrador']) : false,
             ],
-            'empresa' => fn() => Empresa::first()?->only(['nome', 'logotipo', 'updated_at']),
-            'permissions' => fn() => $request->user()
-                ? $request->user()->getAllPermissions()->pluck('name')
+            'empresa' => fn() => $tenant
+                ? \App\Models\Empresa::where('tenant_id', $tenant->id)->first()?->only(['nome', 'logotipo', 'updated_at'])
+                : null,
+            'tenant_atual' => fn() => $tenant ? [
+                'id'   => $tenant->id,
+                'nome' => $tenant->nome,
+                'slug' => $tenant->slug,
+            ] : null,
+            'tenants' => fn() => $user
+                ? $user->tenants()->get()->map(fn($t) => [
+                    'id'    => $t->id,
+                    'nome'  => $t->nome,
+                    'slug'  => $t->slug,
+                    'ativo' => session('tenant_id') == $t->id,
+                ])
+                : [],
+            'tenant_users' => fn() => $tenant
+                ? $tenant->users()->with('roles')->get()->map(fn($u) => [
+                    'id'    => $u->id,
+                    'name'  => $u->name,
+                    'email' => $u->email,
+                    'phone' => $u->phone ?? null,
+                    'active'=> $u->active ?? true,
+                    'role'  => $u->roles->first()?->name ?? null,
+                ])
                 : [],
         ];
     }
