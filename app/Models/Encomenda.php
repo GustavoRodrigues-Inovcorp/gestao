@@ -2,9 +2,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Traits\BelongsToTenant;
 
 class Encomenda extends Model
 {
+    use BelongsToTenant;
+
     // Cabeçalho da encomenda do cliente.
     protected $table = 'encomendas';
 

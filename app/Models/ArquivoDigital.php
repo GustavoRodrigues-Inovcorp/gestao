@@ -2,9 +2,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Traits\BelongsToTenant;
 
 class ArquivoDigital extends Model
 {
+    use BelongsToTenant;
+    
     protected $table = 'arquivo_digital';
 
     protected $fillable = [

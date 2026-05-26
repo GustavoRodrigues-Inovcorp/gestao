@@ -2,9 +2,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Traits\BelongsToTenant;
 
 class FaturaFornecedor extends Model
 {
+    use BelongsToTenant;
+    
     protected $table = 'faturas_fornecedor';
 
     protected $fillable = [

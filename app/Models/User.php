@@ -31,4 +31,18 @@ class User extends Authenticatable
         'password' => 'hashed',
         'active' => 'boolean',
     ];
+
+    public function tenants()
+    {
+        return $this->belongsToMany(Tenant::class, 'tenant_users')
+            
+            ->withTimestamps();
+    }
+
+    public function currentTenant()
+    {
+        $tenantId = session('tenant_id');
+        if (!$tenantId) return null;
+        return $this->tenants()->find($tenantId);
+    }
 }

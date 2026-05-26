@@ -2,9 +2,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Traits\BelongsToTenant;
 
 class Contacto extends Model
 {
+    use BelongsToTenant;
+
     protected $table = 'contactos';
 
     protected $fillable = [

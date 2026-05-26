@@ -2,9 +2,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Traits\BelongsToTenant;
 
 class EncomendaFornecedorLinha extends Model
 {
+    use BelongsToTenant;
     // Linha de custo da encomenda ao fornecedor.
     protected $table = 'encomenda_fornecedor_linhas';
 

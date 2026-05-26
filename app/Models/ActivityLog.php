@@ -2,9 +2,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Traits\BelongsToTenant;
 
 class ActivityLog extends Model
 {
+    use BelongsToTenant;
+    
     protected $table = 'activity_logs';
 
     protected $fillable = [

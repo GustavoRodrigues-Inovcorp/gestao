@@ -2,9 +2,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Traits\BelongsToTenant;
 
 class Artigo extends Model
 {
+    use BelongsToTenant;
+    
     // Tabela de artigos usada nas propostas e encomendas.
     protected $table = 'artigos';
 

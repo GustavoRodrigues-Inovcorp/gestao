@@ -2,9 +2,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Traits\BelongsToTenant;
 
 class OrdemTrabalhoLinha extends Model
 {
+    use BelongsToTenant;
     protected $table = 'ordem_trabalho_linhas';
 
     protected $fillable = [

@@ -2,9 +2,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Traits\BelongsToTenant;
 
 class PropostaLinha extends Model
 {
+    use BelongsToTenant;
     // Linha detalhada da proposta comercial.
     protected $table = 'proposta_linhas';
 
