@@ -46,15 +46,15 @@ class UtilizadorController extends Controller
         ]);
 
         $user = User::create([
-            'name'     => $request->name,
-            'email'    => $request->email,
-            'phone'    => $request->phone,
-            'password' => Hash::make($request->password),
+            'name'     => $request->input('name'),
+            'email'    => $request->input('email'),
+            'phone'    => $request->input('phone'),
+            'password' => Hash::make($request->input('password')),
             'active'   => true,
         ]);
 
-        if ($request->role) {
-            $user->assignRole($request->role);
+        if ($role = $request->input('role')) {
+            $user->assignRole($role);
         }
 
         LogHelper::log('Utilizadores', "Criou utilizador: {$user->name}");
@@ -73,8 +73,8 @@ class UtilizadorController extends Controller
 
         $utilizador->update($request->only('name', 'email', 'phone', 'active'));
 
-        if ($request->role) {
-            $utilizador->syncRoles([$request->role]);
+        if ($role = $request->input('role')) {
+            $utilizador->syncRoles([$role]);
         } else {
             $utilizador->syncRoles([]);
         }

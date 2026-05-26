@@ -46,17 +46,17 @@ class BillingController extends Controller
         ]);
 
         $tenant = app('current_tenant');
-        $novoPlano = Plano::findOrFail($request->plano_id);
+        $novoPlano = Plano::findOrFail($request->input('plano_id'));
         $subscricao = $tenant->subscricaoAtiva()->with('plano')->first();
 
         // Verifica se é upgrade ou downgrade
         $isUpgrade = !$subscricao || $novoPlano->preco_mensal >= $subscricao->plano->preco_mensal;
 
         if ($isUpgrade) {
-            $this->service->upgrade($tenant, $novoPlano, $request->ciclo);
+            $this->service->upgrade($tenant, $novoPlano, $request->input('ciclo'));
             $msg = "Upgrade para {$novoPlano->nome} realizado com sucesso!";
         } else {
-            $this->service->downgrade($tenant, $novoPlano, $request->ciclo);
+            $this->service->downgrade($tenant, $novoPlano, $request->input('ciclo'));
             $msg = "Downgrade para {$novoPlano->nome} agendado para o próximo ciclo.";
         }
 

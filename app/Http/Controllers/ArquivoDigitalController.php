@@ -50,13 +50,13 @@ class ArquivoDigitalController extends Controller
         $path = $file->store('arquivo', 'local');
 
         ArquivoDigital::create([
-            'nome'        => $request->nome,
+            'nome'        => $request->input('nome'),
             'ficheiro'    => $path,
             'tipo_mime'   => $file->getMimeType(),
             'tamanho'     => $file->getSize(),
-            'entidade_id' => $request->entidade_id,
+            'entidade_id' => $request->input('entidade_id'),
             'user_id'     => auth()->id(),
-            'descricao'   => $request->descricao,
+            'descricao'   => $request->input('descricao'),
         ]);
 
         return back()->with('success', 'Ficheiro carregado.');
