@@ -219,7 +219,6 @@ class TenantController extends Controller
         $data = $request->validate([
             'emails' => ['required', 'array'],
             'emails.*' => ['email'],
-            'role' => ['nullable', 'string'],
         ]);
 
         $toAttach = [];
