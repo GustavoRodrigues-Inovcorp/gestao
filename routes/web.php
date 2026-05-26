@@ -13,6 +13,8 @@ use App\Http\Controllers\CalendarioController;
 use App\Http\Controllers\ArquivoDigitalController;
 use App\Http\Controllers\LogsController;
 use App\Http\Controllers\OrdemTrabalhoController;
+use App\Http\Controllers\TenantController;
+use App\Http\Controllers\BillingController;
 use App\Http\Controllers\Configuracoes\EmpresaController;
 use App\Http\Controllers\Configuracoes\PaisController;
 use App\Http\Controllers\Configuracoes\ContactoFuncaoController;
@@ -37,17 +39,21 @@ Route::get('/', function () {
 // Dashboard
 Route::get('/dashboard', function () {
     $user = auth()->user();
+    $isAdmin = $user->hasAnyRole(['admin', 'Administrador']);
+
+    // Admin vê tudo, outros veem o que têm permissão
+    $canSee = fn($perm) => $isAdmin || $user->hasPermissionTo($perm);
 
     $stats = [];
-    if ($user->hasPermissionTo('clientes.read'))    $stats['clientes']    = \App\Models\Entidade::where('is_cliente', true)->count();
-    if ($user->hasPermissionTo('fornecedores.read')) $stats['fornecedores'] = \App\Models\Entidade::where('is_fornecedor', true)->count();
-    if ($user->hasPermissionTo('propostas.read'))   $stats['propostas']   = \App\Models\Proposta::count();
-    if ($user->hasPermissionTo('encomendas_clientes.read')) $stats['encomendas'] = \App\Models\Encomenda::count();
-    if ($user->hasPermissionTo('ordens_trabalho.read'))     $stats['ordens']     = \App\Models\OrdemTrabalho::where('estado', 'aberta')->count();
-    if ($user->hasPermissionTo('financeiro.read'))  $stats['faturas_pendentes'] = \App\Models\FaturaFornecedor::where('estado', 'pendente')->count();
+    if ($canSee('clientes.read'))              $stats['clientes']           = \App\Models\Entidade::where('is_cliente', true)->count();
+    if ($canSee('fornecedores.read'))          $stats['fornecedores']        = \App\Models\Entidade::where('is_fornecedor', true)->count();
+    if ($canSee('propostas.read'))             $stats['propostas']           = \App\Models\Proposta::count();
+    if ($canSee('encomendas_clientes.read'))   $stats['encomendas']          = \App\Models\Encomenda::count();
+    if ($canSee('ordens_trabalho.read'))       $stats['ordens']              = \App\Models\OrdemTrabalho::where('estado', 'aberta')->count();
+    if ($canSee('financeiro.read'))            $stats['faturas_pendentes']   = \App\Models\FaturaFornecedor::where('estado', 'pendente')->count();
 
     $propostas_recentes = [];
-    if ($user->hasPermissionTo('propostas.read')) {
+    if ($canSee('propostas.read')) {
         $propostas_recentes = \App\Models\Proposta::with('entidade')
             ->orderByDesc('id')->limit(5)->get()
             ->map(fn($p) => [
@@ -60,7 +66,7 @@ Route::get('/dashboard', function () {
     }
 
     $ordens_abertas = [];
-    if ($user->hasPermissionTo('ordens_trabalho.read')) {
+    if ($canSee('ordens_trabalho.read')) {
         $ordens_abertas = \App\Models\OrdemTrabalho::with('entidade')
             ->where('estado', 'aberta')
             ->orderByDesc('id')->limit(5)->get()
@@ -81,7 +87,10 @@ Route::get('/dashboard', function () {
 
 // Logotipo da empresa
 Route::get('/empresa/logotipo', function () {
-    $empresa = \App\Models\Empresa::first();
+    $tenantId = session('tenant_id');
+    $tenant = app()->has('current_tenant') ? app('current_tenant') : null;
+    $tenantId = $tenant?->id ?? session('tenant_id');
+    $empresa = \App\Models\Empresa::where('tenant_id', $tenantId)->first();
     abort_unless((bool) $empresa?->logotipo, 404);
     return response()->file(storage_path('app/private/' . $empresa->logotipo));
 })->name('empresa.logotipo');
@@ -235,7 +244,7 @@ Route::middleware(['auth'])->group(function () {
             ->middlewareFor('update', 'permission:financeiro.update')
             ->middlewareFor('destroy', 'permission:financeiro.delete')
             ->except(['create', 'edit', 'show'])
-            ->parameters(['contas-bancarias' => 'contaBancaria']);
+            ->parameters(['conta-corrente-clientes' => 'contaCorrenteCliente']);
     });
 
     // Configurações
@@ -288,6 +297,28 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/logs', [LogsController::class, 'index'])->middleware('permission:configuracoes.read')->name('configuracoes.logs');
     });
 
+    // Tenants
+    Route::get('/tenants', [TenantController::class, 'index'])->name('tenants.index');
+    Route::post('/tenants', [TenantController::class, 'store'])->name('tenants.store');
+    Route::put('/tenants/{tenant}', [TenantController::class, 'update'])->name('tenants.update');
+    Route::post('/tenants/{tenant}/preferences', [TenantController::class, 'preferences'])->name('tenants.preferences');
+    Route::post('/tenants/{tenant}/switch', [TenantController::class, 'switch'])->name('tenants.switch');
+    Route::delete('/tenants/{tenant}', [TenantController::class, 'destroy'])->name('tenants.destroy');
+    
+    // Onboarding endpoints for tenant self-service
+    Route::post('/tenants/{tenant}/onboarding/invite', [TenantController::class, 'invite'])->name('tenants.onboarding.invite');
+    Route::post('/tenants/{tenant}/onboarding/complete', [TenantController::class, 'completeOnboarding'])->name('tenants.onboarding.complete');
+    
+    Route::get('/onboarding', function () {
+        return Inertia::render('Tenants/Onboarding');
+    })->name('onboarding');
+
+    // Billing
+    Route::get('/billing', [BillingController::class, 'index'])->name('billing.show');
+    Route::get('/', [BillingController::class, 'index'])->name('billing.index');
+    Route::post('/upgrade', [BillingController::class, 'upgrade'])->name('billing.upgrade');
+    Route::post('/cancelar', [BillingController::class, 'cancelar'])->name('billing.cancelar');
+    Route::post('/trial', [BillingController::class, 'iniciarTrial'])->name('billing.trial');
 });
 
 require __DIR__.'/auth.php';
