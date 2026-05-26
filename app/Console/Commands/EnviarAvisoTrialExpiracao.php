@@ -22,12 +22,16 @@ class EnviarAvisoTrialExpiracao extends Command
             ->whereNull('trial_aviso_enviado_em')
             ->chunkById(100, function ($subscricoes) {
                 foreach ($subscricoes as $subscricao) {
-                    $emails = $subscricao->tenant?->users?
-                        ->pluck('email')
-                        ->filter()
-                        ->unique()
-                        ->values()
-                        ->all() ?? [];
+                    // Compat: evitar operador nullsafe para analisadores sem PHP8
+                    $emails = [];
+                    if ($subscricao->tenant && $subscricao->tenant->users) {
+                        $emails = $subscricao->tenant->users
+                            ->pluck('email')
+                            ->filter()
+                            ->unique()
+                            ->values()
+                            ->all();
+                    }
 
                     if (empty($emails)) {
                         continue;
@@ -41,9 +45,14 @@ class EnviarAvisoTrialExpiracao extends Command
                         'trial_aviso_enviado_em' => now(),
                     ]);
 
+                    $firstUser = null;
+                    if ($subscricao->tenant) {
+                        $firstUser = $subscricao->tenant->users()->first();
+                    }
+
                     PlanoLog::create([
                         'tenant_id'         => $subscricao->tenant_id,
-                        'user_id'           => $subscricao->tenant->users()->first()?->id ?? 1,
+                        'user_id'           => $firstUser ? $firstUser->id : 1,
                         'acao'              => 'trial_aviso_enviado',
                         'plano_novo_id'     => $subscricao->plano_id,
                         'notas'             => 'Email de aviso de fim do trial enviado.',

@@ -12,7 +12,7 @@ class TenantController extends Controller
     public function index()
     {
         $user = auth()->user();
-        $isAdmin = $user?->hasAnyRole(['admin', 'Administrador']) ?? false;
+        $isAdmin = $user && $user->hasAnyRole(['admin', 'Administrador']);
         $query = ($isAdmin ? Tenant::query() : $user->tenants())->with('empresa');
 
         return Inertia::render('Tenants/Index', [
@@ -23,8 +23,8 @@ class TenantController extends Controller
                     'nome'    => $t->nome,
                     'slug'    => $t->slug,
                     'estado'  => $t->estado,
-                    'logotipo' => $t->empresa?->logotipo,
-                    'tem_logotipo' => filled($t->empresa?->logotipo),
+                    'logotipo' => $t->empresa ? $t->empresa->logotipo : null,
+                    'tem_logotipo' => !empty($t->empresa && $t->empresa->logotipo),
                     'ativo'   => session('tenant_id') === $t->id,
                     'onboarding_completo' => isset($t->config['onboarding']['completed']) && $t->config['onboarding']['completed'],
                 ]),
