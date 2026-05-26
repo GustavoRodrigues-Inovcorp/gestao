@@ -79,39 +79,14 @@ function inviteUsers() {
     })
 }
 
-// Permissions selection (initial permissions for tenant)
-const permissionsList = [
-  { key: 'clientes', label: 'Clientes' },
-  { key: 'fornecedores', label: 'Fornecedores' },
-  { key: 'contactos', label: 'Contactos' },
-  { key: 'propostas', label: 'Propostas' },
-  { key: 'calendario', label: 'Calendário' },
-  { key: 'encomendas_clientes', label: 'Encomendas - Clientes' },
-  { key: 'encomendas_fornecedores', label: 'Encomendas - Fornecedores' },
-  { key: 'ordens_trabalho', label: 'Ordens de Trabalho' },
-  { key: 'financeiro', label: 'Financeiro' },
-  { key: 'arquivo_digital', label: 'Arquivo Digital' },
-  { key: 'utilizadores', label: 'Gestão de Acessos' },
-  { key: 'configuracoes', label: 'Configurações' },
-]
-const selectedPermissions = ref([])
-
-function togglePermission(key) {
-  const i = selectedPermissions.value.indexOf(key)
-  if (i === -1) selectedPermissions.value.push(key)
-  else selectedPermissions.value.splice(i, 1)
-}
-
-watch(selectedPermissions, () => {
-  const item = checklist.value.find(i => i.id === 2)
-  if (item) item.done = selectedPermissions.value.length > 0
-}, { deep: true })
+// Nota: as permissões iniciais foram removidas do onboarding.
+// A gestão de permissões continua disponível em Acessos -> Permissões.
 
 // Checklist (simple links to sections)
 const checklist = ref([
-  { id: 1, label: 'Configurar dados da empresa', href: '/configuracoes/empresa', done: false, required: true },
-  { id: 2, label: 'Definir grupos de permissões', href: '/acessos/permissoes', done: false, required: true },
-  { id: 3, label: 'Convidar utilizadores', href: '/acessos/utilizadores', done: false, required: true },
+  { id: 1, label: 'Configurar dados da empresa', done: false, required: true },
+  { id: 2, label: 'Definir grupos de permissões', done: false, required: false },
+  { id: 3, label: 'Convidar utilizadores', done: false, required: true },
 ])
 
 const completedChecklist = computed(() => checklist.value.filter(item => item.done).length)
@@ -121,10 +96,8 @@ const canFinish = computed(() => requiredChecklistDone.value)
 
 function finish() {
   if (!canFinish.value) return
-
   router.post(`/tenants/${tenantAtual.value.id}/onboarding/complete`, {
     checklist: checklist.value,
-    initial_permissions: selectedPermissions.value,
   }, { preserveScroll: true })
 }
 </script>
@@ -178,17 +151,8 @@ function finish() {
             </div>
           </div>
 
-          <!-- Step 2: Permissions -->
+          <!-- Step 2: Invite users -->
           <div v-if="step === 2">
-            <Label>Permissões iniciais</Label>
-            <p class="text-xs text-muted-foreground">Seleciona as áreas que os utilizadores terão por defeito.</p>
-            <div class="mt-3 grid grid-cols-2 gap-2">
-              <button v-for="p in permissionsList" :key="p.key" @click.prevent="togglePermission(p.key)"
-                :class="['rounded-md p-2 text-sm text-left border transition', selectedPermissions.includes(p.key) ? 'bg-primary text-primary-foreground border-primary' : 'bg-background border-border']">
-                {{ p.label }}
-              </button>
-            </div>
-
             <div class="mt-6 rounded-lg border bg-background p-4 space-y-3">
               <div>
                 <Label>Convidar utilizadores</Label>
