@@ -11,18 +11,26 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
-    ->withMiddleware(function (Middleware $middleware) {
+        ->withMiddleware(function (Middleware $middleware) {
         $middleware->alias([
             'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
-            'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
+            'permission' => \App\Http\Middleware\AdminOrPermission::class,
             'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
         ]);
 
         $middleware->web(append: [
+            \App\Http\Middleware\SetTenant::class,
             \App\Http\Middleware\HandleInertiaRequests::class,
             \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
+            \App\Http\Middleware\SecurityHeaders::class,
+//            \App\Http\Middleware\InjectTenantHeader::class,
         ]);
-        $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
+
+//        Garantir que APIs recebem o tenant activo (quando disponível)
+//        $middleware->api(append: [
+//            \App\Http\Middleware\SetTenant::class,
+//            \App\Http\Middleware\InjectTenantHeader::class,
+//        ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //
